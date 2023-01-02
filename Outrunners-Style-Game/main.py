@@ -378,9 +378,11 @@ def car_steering():
 
 def check_best_time():
     global best_time
+    global last_time
     global timer
 
     new_time = timer
+    last_time = new_time
     if best_time == 0:
         best_time = new_time
     elif new_time < best_time:
@@ -473,7 +475,9 @@ def render_ui():
     text_timer = font_timer.render(f"Time: {round(timer, 3)}", True, 'black')
     text_lap = font_lap.render(f"Lap: {lap}", True, 'black')
     text_best_time = font_best_time.render(f"Best Time: {round(best_time, 3)}", True, 'black')
+    text_last_time = font_best_time.render(f"Last Time: {round(last_time, 3)}", True, 'black')
     WIN.blit(text_best_time, (20, 10))
+    WIN.blit(text_last_time, (20, 50))
     WIN.blit(text_timer, ((WIDTH - 70) / 2, 10))
     WIN.blit(text_lap, ((WIDTH - 120), 10))
     render_speedo()
@@ -522,9 +526,11 @@ current_car_orientation = PLAYER_CAR_STRAIGHT_IMAGE
 
 timer = 0
 best_time = 0
+last_time = 0
 pygame.time.set_timer(pygame.USEREVENT, 100)
 font_timer = font_default
 font_best_time = font_default
+font_last_time = font_default
 
 font_speed_num = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 10)
 
