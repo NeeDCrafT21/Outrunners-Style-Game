@@ -14,6 +14,12 @@ BLUE = (81, 116, 240)
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Outrunners Style Game")
 
+''' Background image '''
+BACKGROUND_IMAGE = pygame.image.load(os.path.join('Assets', 'background.jpg'))
+BACKGROUND_SCALE = 0.38
+BACKGROUND_IMAGE_WIDTH = BACKGROUND_IMAGE.get_width() * BACKGROUND_SCALE
+BACKGROUND_IMAGE_HEIGHT = BACKGROUND_IMAGE.get_height() * BACKGROUND_SCALE
+
 ''' Player car image '''
 PLAYER_CAR_STRAIGHT_IMAGE = pygame.image.load(os.path.join('Assets', 'player_car.png'))
 PLAYER_CAR_LEFT_IMAGE = pygame.image.load(os.path.join('Assets', 'player_car_left.png'))
@@ -34,9 +40,9 @@ SEGMENT_LENGTH = 200
 ROAD_WIDTH = 2000
 RUMBLE_LENGTH = 3
 LANES = 3
-COLORS = {'light': {'road': (120, 120, 120), 'grass': (61, 158, 28), 'rumble': (219, 13, 13), 'lane': (223, 228, 237)},
+COLORS = {'light': {'road': (120, 120, 120), 'grass': (167, 235, 108), 'rumble': (219, 13, 13), 'lane': (223, 228, 237)},
           # light rumble is red, lane is white
-          'dark': {'road': (115, 115, 115), 'grass': (41, 145, 29), 'rumble': (223, 228, 237),
+          'dark': {'road': (115, 115, 115), 'grass': (154, 219, 96), 'rumble': (223, 228, 237),
                    'lane': (115, 115, 115)}}  # dark rumble is white, lane is road color
 START_FINISH_SEGMENT_IMAGE = pygame.image.load(os.path.join('Assets', 'checkered_texture.jpg'))
 START_FINISH_SEGMENT = START_FINISH_SEGMENT_IMAGE.get_rect()
@@ -135,6 +141,20 @@ class Smoke:
 smoke = Smoke()
 
 
+def get_last_y(index):
+    if index != 0:
+        return road_segments[index - 1]['p2']['world']['y']
+    else:
+        return road_segments[NUMBER_OF_SEGMENTS_ON_TRACK - 1]['p2']['world']['y']
+
+
+def set_hills(index, length, y_value):
+    for i in range(length):
+        if index != 0:
+            road_segments[index + i]['p2']['world']['y'] += y_value
+            road_segments[index + i]['p1']['world']['y'] = get_last_y(index + i - 1)
+
+
 def create_section(number_of_segments):
     for i in range(number_of_segments):
         road_segments.append(
@@ -170,6 +190,7 @@ def create_turn(index, length, radius):
 
 def generate_track():
     current_segment = 0
+    # set_hills(10, 100, 500)
     while current_segment < NUMBER_OF_SEGMENTS_ON_TRACK:
         if NUMBER_OF_SEGMENTS_ON_TRACK - current_segment >= 300:
             straight_length = random.randint(10, 150)
@@ -238,8 +259,6 @@ def draw_segment(index, x1, y1, w1, x2, y2, w2, color):
 
 
 ''' Setting player's position (z value) on the track '''
-
-
 def increase_z_position(player_current_position, player_traveled_distance, length_of_track):
     global position
     global last_position
@@ -255,8 +274,6 @@ def increase_z_position(player_current_position, player_traveled_distance, lengt
 
 
 ''' Calculate track's x value offset on the screen'''
-
-
 def calculate_curve_x_value(segment_length, radius):
     # print(f"\rY position: {y}", end=' ')
     if radius == 0:
@@ -275,6 +292,7 @@ def percentRemaining(j, total):
 
 
 def render_track():
+    global current_curve
     base_segment = find_segment_by_z_value(position)
     maxy = HEIGHT
     curve = 0
@@ -290,6 +308,8 @@ def render_track():
                           position - (track_length if is_road_looping else 0), distance_to_plane)
 
         curve += calculate_curve_x_value(SEGMENT_LENGTH, segment['radius'])
+        if i == 0:
+            current_curve = curve
         curve_value += curve
 
         calculate_3D_view(segment['p2'], (position_x + curve_value - (curve * position_on_segment)), camera_y,
@@ -457,7 +477,6 @@ angle = 0
 def render_speedo():
     global angle
     angle = (2 * math.pi * 60 / 360) + (2 * math.pi * 240 / 360) * (current_speed / MAX_SPEED)
-    print(f"\rAngle: {round(angle)} / 360", end=' ')
     x = 150
     y = HEIGHT - 50
     rot_x = x
@@ -484,7 +503,20 @@ def render_ui():
 
 
 def render_background():
+    global background_x_start_position
     WIN.fill(BLUE)
+    background = pygame.transform.scale(BACKGROUND_IMAGE, (BACKGROUND_IMAGE_WIDTH, BACKGROUND_IMAGE_HEIGHT))
+    background_x_start_position += current_curve * (current_speed / MAX_SPEED)
+    print(f"\rX Value: {round(background_x_start_position)}", end=' ')
+    WIN.blit(background, (background_x_start_position, 0))
+    WIN.blit(background, (background_x_start_position - BACKGROUND_IMAGE_WIDTH, 0))
+    WIN.blit(background, (background_x_start_position + BACKGROUND_IMAGE_WIDTH, 0))
+    if background_x_start_position <= -BACKGROUND_IMAGE_WIDTH:
+        WIN.blit(background, (background_x_start_position - BACKGROUND_IMAGE_WIDTH, 0))
+        background_x_start_position = 0
+    if background_x_start_position >= BACKGROUND_IMAGE_WIDTH:
+        WIN.blit(background, (background_x_start_position + BACKGROUND_IMAGE_WIDTH, 0))
+        background_x_start_position = 0
 
 
 def draw_game_window():
@@ -533,6 +565,9 @@ font_best_time = font_default
 font_last_time = font_default
 
 font_speed_num = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 10)
+
+current_curve = 0
+background_x_start_position = 0
 
 def main():
     global timer
