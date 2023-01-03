@@ -88,6 +88,7 @@ OFFROAD_DECELERATION = -MAX_SPEED / 2
 PARTICLE_IMAGE = pygame.image.load(os.path.join('Assets', 'smoke1.png'))
 GB_LOGO = pygame.image.load(os.path.join('Assets', 'grupa_badawcza_logo.png'))
 
+button_clicked = False
 
 class Button:
     def __init__(self, x, y, image, scale):
@@ -96,22 +97,18 @@ class Button:
         self.image = pygame.transform.scale(image, (int(width * scale), int(height * scale)))
         self.rect = self.image.get_rect()
         self.rect.topleft = (x, y)
-        self.clicked = False
 
     def draw(self, surface):
+        global button_clicked
+
         action = False
         mouse_position = pygame.mouse.get_pos()
 
-        # check mouseover and clicked conditions
         if self.rect.collidepoint(mouse_position):
-            if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
-                self.clicked = True
+            if pygame.mouse.get_pressed()[0] == 1 and not button_clicked:
+                button_clicked = True
                 action = True
 
-        if pygame.mouse.get_pressed()[0] == 0:
-            self.clicked = False
-
-        # draw button on screen
         surface.blit(self.image, (self.rect.x, self.rect.y))
 
         return action
@@ -550,7 +547,7 @@ def render_background():
     background = pygame.transform.scale(BACKGROUND_IMAGE, (BACKGROUND_IMAGE_WIDTH, BACKGROUND_IMAGE_HEIGHT))
     if not game_paused:
         background_x_start_position += current_curve * (current_speed / MAX_SPEED)
-    print(f"\rX Value: {round(background_x_start_position)}", end=' ')
+    # print(f"\rX Value: {round(background_x_start_position)}", end=' ')
     WIN.blit(background, (background_x_start_position, 0))
     WIN.blit(background, (background_x_start_position - BACKGROUND_IMAGE_WIDTH, 0))
     WIN.blit(background, (background_x_start_position + BACKGROUND_IMAGE_WIDTH, 0))
@@ -594,6 +591,11 @@ def draw_game_window():
         if len(smoke.all_particles) != 0:
             smoke.update()
             smoke.draw()
+
+        global start_timer
+        if not start_timer:
+            # screen_fade_out()
+            start_timer = True
     else:
         esc_pause_menu()
 
@@ -603,6 +605,7 @@ def draw_game_window():
 def esc_pause_menu():
     global window_mode
     global game_paused
+    global start_timer
     exit_button = Button(250, 200, exit_img, 0.8)
     pause_menu = pygame.Surface((WIDTH, HEIGHT))
     pause_menu.set_colorkey((0, 0, 0))
@@ -613,6 +616,32 @@ def esc_pause_menu():
         window_mode = 'menu'
         update_game_settings()
         game_paused = False
+        start_timer = False
+        screen_fade_in()
+
+
+def screen_fade_in():
+    fade_in = pygame.Surface((WIDTH, HEIGHT))
+    fade_in.set_colorkey((0, 0, 0))
+
+    for alpha in range(0, 256, 1):
+        fade_in.set_alpha(alpha)
+        pygame.draw.rect(fade_in, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
+        WIN.blit(fade_in, (0, 0))
+        pygame.display.update()
+
+def screen_fade_out():
+    fade_out = pygame.Surface((WIDTH, HEIGHT))
+    fade_out.set_colorkey((0, 0, 0))
+
+    alpha = 255
+    while alpha >= 0:
+        fade_out.set_alpha(alpha)
+        pygame.draw.rect(fade_out, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
+        WIN.blit(fade_out, (0, 0))
+        pygame.display.update()
+        print(f"\rAlpha value: {alpha}", end=' ')
+        alpha -= 1
 
 
 car_frame = 0
@@ -628,7 +657,7 @@ def menu_car_spinning():
                                             (CAR_SPINNING[car_spin_image].get_width() * CAR_SCALE,
                                              CAR_SPINNING[car_spin_image].get_height() * CAR_SCALE))
     WIN.blit(car_spin, (car_spin_on_screen_position_x, PLAYER_ON_SCREEN_POSITION_Y))
-    if car_frame % 8 == 0:
+    if car_frame % 10 == 0:
         car_spin_image = (car_spin_image + 1) % 9
         car_frame = 0
 
@@ -644,6 +673,7 @@ def draw_menu_window():
     menu_car_spinning()
 
     if start_button.draw(WIN):
+        screen_fade_in()
         window_mode = 'game'
     if exit_button.draw(WIN):
         run = False
@@ -713,6 +743,7 @@ current_car_orientation = PLAYER_CAR_STRAIGHT_IMAGE
 timer = 0
 best_time = 0
 last_time = 0
+start_timer = False
 pygame.time.set_timer(pygame.USEREVENT, 100)
 font_timer = font_default
 font_best_time = font_default
@@ -735,6 +766,7 @@ font_game_info = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 1
 def main():
     global timer
     global run
+    global button_clicked
 
     pygame.init()
     clock = pygame.time.Clock()
@@ -742,7 +774,7 @@ def main():
     while run:
         clock.tick(FPS)
         for event in pygame.event.get():
-            if event.type == pygame.USEREVENT and window_mode == 'game' and not game_paused:
+            if event.type == pygame.USEREVENT and start_timer and not game_paused:
                 timer += 0.1
             if event.type == pygame.QUIT:
                 run = False
@@ -751,6 +783,11 @@ def main():
             draw_menu_window()
         elif window_mode == 'game':
             draw_game_window()
+
+        # print(f"\rButton pressed: {button_clicked}", end=' ')
+
+        if pygame.mouse.get_pressed()[0] == 0:
+            button_clicked = False
 
     pygame.quit()
 
