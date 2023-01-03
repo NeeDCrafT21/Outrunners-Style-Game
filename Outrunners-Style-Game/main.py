@@ -14,6 +14,18 @@ BLUE = (81, 116, 240)
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Outrunners Style Game")
 
+''' Menu settings and images'''
+CAR_SPIN_1 = pygame.image.load(os.path.join('Assets', 'car_spin_1.png'))
+CAR_SPIN_2 = pygame.image.load(os.path.join('Assets', 'car_spin_2.png'))
+CAR_SPIN_3 = pygame.image.load(os.path.join('Assets', 'car_spin_3.png'))
+CAR_SPIN_4 = pygame.image.load(os.path.join('Assets', 'car_spin_4.png'))
+CAR_SPIN_5 = pygame.image.load(os.path.join('Assets', 'car_spin_5.png'))
+CAR_SPIN_6 = pygame.image.load(os.path.join('Assets', 'car_spin_6.png'))
+CAR_SPIN_7 = pygame.image.load(os.path.join('Assets', 'car_spin_7.png'))
+CAR_SPIN_8 = pygame.image.load(os.path.join('Assets', 'car_spin_8.png'))
+CAR_SPIN_9 = pygame.image.load(os.path.join('Assets', 'car_spin_9.png'))
+CAR_SPINNING = [CAR_SPIN_1, CAR_SPIN_2, CAR_SPIN_3, CAR_SPIN_4, CAR_SPIN_5, CAR_SPIN_6, CAR_SPIN_7, CAR_SPIN_8, CAR_SPIN_9]
+
 ''' Background image '''
 BACKGROUND_IMAGE = pygame.image.load(os.path.join('Assets', 'background.jpg'))
 BACKGROUND_SCALE = 0.38
@@ -75,6 +87,34 @@ OFFROAD_DECELERATION = -MAX_SPEED / 2
 ''' Misc '''
 PARTICLE_IMAGE = pygame.image.load(os.path.join('Assets', 'smoke1.png'))
 GB_LOGO = pygame.image.load(os.path.join('Assets', 'grupa_badawcza_logo.png'))
+
+
+class Button:
+    def __init__(self, x, y, image, scale):
+        width = image.get_width()
+        height = image.get_height()
+        self.image = pygame.transform.scale(image, (int(width * scale), int(height * scale)))
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x, y)
+        self.clicked = False
+
+    def draw(self, surface):
+        action = False
+        mouse_position = pygame.mouse.get_pos()
+
+        # check mouseover and clicked conditions
+        if self.rect.collidepoint(mouse_position):
+            if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
+                self.clicked = True
+                action = True
+
+        if pygame.mouse.get_pressed()[0] == 0:
+            self.clicked = False
+
+        # draw button on screen
+        surface.blit(self.image, (self.rect.x, self.rect.y))
+
+        return action
 
 
 class SmokeParticle:
@@ -495,10 +535,12 @@ def render_ui():
     text_lap = font_lap.render(f"Lap: {lap}", True, 'black')
     text_best_time = font_best_time.render(f"Best Time: {round(best_time, 3)}", True, 'black')
     text_last_time = font_best_time.render(f"Last Time: {round(last_time, 3)}", True, 'black')
+    text_game_info = font_game_info.render(f"Press ESC to pause game", True, 'grey')
     WIN.blit(text_best_time, (20, 10))
     WIN.blit(text_last_time, (20, 50))
     WIN.blit(text_timer, ((WIDTH - 70) / 2, 10))
-    WIN.blit(text_lap, ((WIDTH - 120), 10))
+    WIN.blit(text_lap, (WIDTH - 120, 10))
+    WIN.blit(text_game_info, (WIDTH - 150, HEIGHT - 30))
     render_speedo()
 
 
@@ -506,7 +548,8 @@ def render_background():
     global background_x_start_position
     WIN.fill(BLUE)
     background = pygame.transform.scale(BACKGROUND_IMAGE, (BACKGROUND_IMAGE_WIDTH, BACKGROUND_IMAGE_HEIGHT))
-    background_x_start_position += current_curve * (current_speed / MAX_SPEED)
+    if not game_paused:
+        background_x_start_position += current_curve * (current_speed / MAX_SPEED)
     print(f"\rX Value: {round(background_x_start_position)}", end=' ')
     WIN.blit(background, (background_x_start_position, 0))
     WIN.blit(background, (background_x_start_position - BACKGROUND_IMAGE_WIDTH, 0))
@@ -519,24 +562,135 @@ def render_background():
         background_x_start_position = 0
 
 
+esc_pressed = False
+
 def draw_game_window():
     global position
+    global game_paused
+    global esc_pressed
 
-    increase_z_position(position, dt * current_speed, track_length)
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_ESCAPE] and not game_paused and not esc_pressed:
+        esc_pressed = True
+        game_paused = True
 
-    check_lap_number()
+    if not keys[pygame.K_ESCAPE] and esc_pressed:
+        esc_pressed = False
+
+    if keys[pygame.K_ESCAPE] and game_paused and not esc_pressed:
+        esc_pressed = True
+        game_paused = False
 
     render_background()
     render_track()
     render_player()
-    car_steering()
     render_ui()
 
-    if len(smoke.all_particles) != 0:
-        smoke.update()
-        smoke.draw()
+    if not game_paused:
+        increase_z_position(position, dt * current_speed, track_length)
+        check_lap_number()
+        car_steering()
+
+        if len(smoke.all_particles) != 0:
+            smoke.update()
+            smoke.draw()
+    else:
+        esc_pause_menu()
 
     pygame.display.update()
+
+
+def esc_pause_menu():
+    global window_mode
+    global game_paused
+    exit_button = Button(250, 200, exit_img, 0.8)
+    pause_menu = pygame.Surface((WIDTH, HEIGHT))
+    pause_menu.set_colorkey((0, 0, 0))
+    pause_menu.set_alpha(150)
+    pygame.draw.rect(pause_menu, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
+    WIN.blit(pause_menu, (0, 0))
+    if exit_button.draw(WIN):
+        window_mode = 'menu'
+        update_game_settings()
+        game_paused = False
+
+
+car_frame = 0
+car_spin_image = 0
+
+def menu_car_spinning():
+    global car_frame
+    global car_spin_image
+    car_frame += 1
+
+    car_spin_on_screen_position_x = WIDTH / 2 - (CAR_SPINNING[car_spin_image].get_width() * CAR_SCALE) / 2
+    car_spin = pygame.transform.scale(CAR_SPINNING[car_spin_image],
+                                            (CAR_SPINNING[car_spin_image].get_width() * CAR_SCALE,
+                                             CAR_SPINNING[car_spin_image].get_height() * CAR_SCALE))
+    WIN.blit(car_spin, (car_spin_on_screen_position_x, PLAYER_ON_SCREEN_POSITION_Y))
+    if car_frame % 8 == 0:
+        car_spin_image = (car_spin_image + 1) % 9
+        car_frame = 0
+
+
+def draw_menu_window():
+    global window_mode
+    global run
+
+    start_button = Button(100, 200, start_img, 0.8)
+    exit_button = Button(450, 200, exit_img, 0.8)
+
+    WIN.fill(BLUE)
+    menu_car_spinning()
+
+    if start_button.draw(WIN):
+        window_mode = 'game'
+    if exit_button.draw(WIN):
+        run = False
+
+    pygame.display.update()
+
+
+def update_game_settings():
+    global road_segments
+    global lap
+    global lap_counted
+    global track_length
+    global position
+    global last_position
+    global position_x
+    global current_speed
+    global current_car_orientation
+    global timer
+    global best_time
+    global last_time
+    global current_curve
+    global background_x_start_position
+    global smoke
+    global angle
+
+    lap = 1
+    lap_counted = False
+
+    road_segments = []
+    track_length = create_section(NUMBER_OF_SEGMENTS_ON_TRACK)
+    generate_track()
+
+    position = 0
+    last_position = position
+    position_x = 0
+    current_speed = 0
+    current_car_orientation = PLAYER_CAR_STRAIGHT_IMAGE
+
+    timer = 0
+    best_time = 0
+    last_time = 0
+
+    current_curve = 0
+    background_x_start_position = 0
+
+    smoke = Smoke()
+    angle = 0
 
 
 pygame.font.init()
@@ -569,22 +723,34 @@ font_speed_num = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 1
 current_curve = 0
 background_x_start_position = 0
 
+start_img = pygame.image.load(os.path.join('Assets', 'start_btn.png')).convert_alpha()
+exit_img = pygame.image.load(os.path.join('Assets', 'exit_btn.png')).convert_alpha()
+
+window_mode = 'menu'
+run = True
+game_paused = False
+
+font_game_info = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 10)
+
 def main():
     global timer
+    global run
 
     pygame.init()
     clock = pygame.time.Clock()
-    run = True
 
     while run:
         clock.tick(FPS)
         for event in pygame.event.get():
-            if event.type == pygame.USEREVENT:
+            if event.type == pygame.USEREVENT and window_mode == 'game' and not game_paused:
                 timer += 0.1
             if event.type == pygame.QUIT:
                 run = False
 
-        draw_game_window()
+        if window_mode == 'menu':
+            draw_menu_window()
+        elif window_mode == 'game':
+            draw_game_window()
 
     pygame.quit()
 
