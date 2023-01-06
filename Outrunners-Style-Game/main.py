@@ -32,6 +32,14 @@ BACKGROUND_SCALE = 0.38
 BACKGROUND_IMAGE_WIDTH = BACKGROUND_IMAGE.get_width() * BACKGROUND_SCALE
 BACKGROUND_IMAGE_HEIGHT = BACKGROUND_IMAGE.get_height() * BACKGROUND_SCALE
 
+''' Button images '''
+start_img = pygame.image.load(os.path.join('Assets', 'start_btn.png')).convert_alpha()
+exit_img = pygame.image.load(os.path.join('Assets', 'exit_btn.png')).convert_alpha()
+BUTTON_PLAY_UNPRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_play_unpressed.png')).convert_alpha()
+BUTTON_PLAY_PRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_play_pressed.png')).convert_alpha()
+BUTTON_QUIT_UNPRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_quit_unpressed.png')).convert_alpha()
+BUTTON_QUIT_PRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_quit_pressed.png')).convert_alpha()
+
 ''' Player car image '''
 PLAYER_CAR_STRAIGHT_IMAGE = pygame.image.load(os.path.join('Assets', 'player_car.png'))
 PLAYER_CAR_LEFT_IMAGE = pygame.image.load(os.path.join('Assets', 'player_car_left.png'))
@@ -87,6 +95,7 @@ OFFROAD_DECELERATION = -MAX_SPEED / 2
 ''' Misc '''
 PARTICLE_IMAGE = pygame.image.load(os.path.join('Assets', 'smoke1.png'))
 GB_LOGO = pygame.image.load(os.path.join('Assets', 'grupa_badawcza_logo.png'))
+MF_LOGO = pygame.image.load(os.path.join('Assets', 'munefrakt_logo.png'))
 
 button_clicked = False
 
@@ -206,17 +215,6 @@ def create_section(number_of_segments):
              'radius': 0
              })
 
-        # if 100 > road_segments[i]['index'] > 50:
-        #     road_segments[i]['radius'] = -VERY_LIGHT_TURN
-        # if 200 > road_segments[i]['index'] > 150:
-        #     road_segments[i]['radius'] = LIGHT_TURN
-        # if 300 > road_segments[i]['index'] > 250:
-        #     road_segments[i]['radius'] = -MEDIUM_TURN
-        # if 400 > road_segments[i]['index'] > 350:
-        #     road_segments[i]['radius'] = HARD_TURN
-        # if 500 > road_segments[i]['index'] > 450:
-        #     road_segments[i]['radius'] = -VERY_HARD_TURN
-
     return len(road_segments) * SEGMENT_LENGTH
 
 
@@ -227,17 +225,33 @@ def create_turn(index, length, radius):
 
 def generate_track():
     current_segment = 0
-    # set_hills(10, 100, 500)
+    min_straight_length = 10
+    max_straight_length = 150
+    min_turn_length = 10
+    max_turn_length = 300
     while current_segment < NUMBER_OF_SEGMENTS_ON_TRACK:
-        if NUMBER_OF_SEGMENTS_ON_TRACK - current_segment >= 300:
-            straight_length = random.randint(10, 150)
+        if NUMBER_OF_SEGMENTS_ON_TRACK - current_segment >= max_straight_length:
+            straight_length = random.randint(min_straight_length, max_straight_length)
             current_segment += straight_length
-            turn_length = random.randint(10, 300)
+        else:
+            if NUMBER_OF_SEGMENTS_ON_TRACK - current_segment >= min_straight_length:
+                straight_length = random.randint(min_straight_length, NUMBER_OF_SEGMENTS_ON_TRACK - current_segment)
+                current_segment += straight_length
+            else:
+                break
+        if NUMBER_OF_SEGMENTS_ON_TRACK - current_segment >= max_turn_length:
+            turn_length = random.randint(min_turn_length, max_turn_length)
             turn_radius = random.choice(TURNS) * random.choice([-1, 1])
             create_turn(current_segment, turn_length, turn_radius)
             current_segment += turn_length
         else:
-            break
+            if NUMBER_OF_SEGMENTS_ON_TRACK - current_segment >= min_turn_length:
+                turn_length = random.randint(min_turn_length, NUMBER_OF_SEGMENTS_ON_TRACK - current_segment)
+                turn_radius = random.choice(TURNS) * random.choice([-1, 1])
+                create_turn(current_segment, turn_length, turn_radius)
+                current_segment += turn_length
+            else:
+                break
 
 
 ''' Returns a segment the car is currently on '''
@@ -617,17 +631,18 @@ def esc_pause_menu():
         update_game_settings()
         game_paused = False
         start_timer = False
-        screen_fade_in()
+        screen_fade_in(2)
 
 
-def screen_fade_in():
+def screen_fade_in(step):
     fade_in = pygame.Surface((WIDTH, HEIGHT))
     fade_in.set_colorkey((0, 0, 0))
 
-    for alpha in range(0, 256, 1):
+    for alpha in range(0, 255, step):
         fade_in.set_alpha(alpha)
-        pygame.draw.rect(fade_in, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
+        pygame.draw.rect(fade_in, (1, 1, 1), (0, 0, WIDTH, HEIGHT))
         WIN.blit(fade_in, (0, 0))
+        print(f"\rAlpha value: {alpha}", end=' ')
         pygame.display.update()
 
 def screen_fade_out():
@@ -673,12 +688,34 @@ def draw_menu_window():
     menu_car_spinning()
 
     if start_button.draw(WIN):
-        screen_fade_in()
+        screen_fade_in(2)
         window_mode = 'game'
     if exit_button.draw(WIN):
         run = False
 
     pygame.display.update()
+
+
+def render_start_screen():
+    WIN.fill('black')
+    scale = 3
+    mf_logo = pygame.transform.scale(MF_LOGO, (MF_LOGO.get_width() * scale, MF_LOGO.get_height() * scale))
+    WIN.blit(mf_logo, mf_logo.get_rect(center=(WIDTH / 2, HEIGHT / 2)))
+
+    fade_out = pygame.Surface((WIDTH, HEIGHT))
+    fade_out.set_colorkey((0, 0, 0))
+
+    alpha = 255
+    while alpha >= 0:
+        fade_out.set_alpha(alpha)
+        pygame.draw.rect(fade_out, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
+        WIN.blit(mf_logo, mf_logo.get_rect(center=(WIDTH / 2, HEIGHT / 2)))
+        WIN.blit(fade_out, (0, 0))
+        pygame.display.update()
+        print(f"\rAlpha value: {alpha}", end=' ')
+        alpha -= 1
+
+    screen_fade_in(1)
 
 
 def update_game_settings():
@@ -754,9 +791,6 @@ font_speed_num = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 1
 current_curve = 0
 background_x_start_position = 0
 
-start_img = pygame.image.load(os.path.join('Assets', 'start_btn.png')).convert_alpha()
-exit_img = pygame.image.load(os.path.join('Assets', 'exit_btn.png')).convert_alpha()
-
 window_mode = 'menu'
 run = True
 game_paused = False
@@ -770,6 +804,8 @@ def main():
 
     pygame.init()
     clock = pygame.time.Clock()
+
+    render_start_screen()
 
     while run:
         clock.tick(FPS)
