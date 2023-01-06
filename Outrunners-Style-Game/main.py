@@ -12,7 +12,9 @@ from pygame import Rect
 WIDTH, HEIGHT = 960, 720
 BLUE = (81, 116, 240)
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Outrunners Style Game")
+pygame.display.set_caption("Project Jagged Ferrari")
+PYGAME_ICON = pygame.image.load(os.path.join('Assets', 'player_car.png'))
+pygame.display.set_icon(PYGAME_ICON)
 
 ''' Menu settings and images'''
 CAR_SPIN_1 = pygame.image.load(os.path.join('Assets', 'car_spin_1.png'))
@@ -31,14 +33,17 @@ BACKGROUND_IMAGE = pygame.image.load(os.path.join('Assets', 'background.jpg'))
 BACKGROUND_SCALE = 0.38
 BACKGROUND_IMAGE_WIDTH = BACKGROUND_IMAGE.get_width() * BACKGROUND_SCALE
 BACKGROUND_IMAGE_HEIGHT = BACKGROUND_IMAGE.get_height() * BACKGROUND_SCALE
+MENU_BACKGROUND_IMAGE = pygame.image.load(os.path.join('Assets', 'menu_background.png'))
 
 ''' Button images '''
 start_img = pygame.image.load(os.path.join('Assets', 'start_btn.png')).convert_alpha()
 exit_img = pygame.image.load(os.path.join('Assets', 'exit_btn.png')).convert_alpha()
 BUTTON_PLAY_UNPRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_play_unpressed.png')).convert_alpha()
 BUTTON_PLAY_PRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_play_pressed.png')).convert_alpha()
+PLAY_BUTTON = [BUTTON_PLAY_UNPRESSED_IMAGE, BUTTON_PLAY_PRESSED_IMAGE]
 BUTTON_QUIT_UNPRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_quit_unpressed.png')).convert_alpha()
 BUTTON_QUIT_PRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_quit_pressed.png')).convert_alpha()
+QUIT_BUTTON = [BUTTON_QUIT_UNPRESSED_IMAGE, BUTTON_QUIT_PRESSED_IMAGE]
 
 ''' Player car image '''
 PLAYER_CAR_STRAIGHT_IMAGE = pygame.image.load(os.path.join('Assets', 'player_car.png'))
@@ -100,12 +105,14 @@ MF_LOGO = pygame.image.load(os.path.join('Assets', 'munefrakt_logo.png'))
 button_clicked = False
 
 class Button:
-    def __init__(self, x, y, image, scale):
-        width = image.get_width()
-        height = image.get_height()
-        self.image = pygame.transform.scale(image, (int(width * scale), int(height * scale)))
-        self.rect = self.image.get_rect()
-        self.rect.topleft = (x, y)
+    def __init__(self, x, y, images, scale):
+        self.images = images
+        self.scale = scale
+        self.width = images[0].get_width()
+        self.height = images[0].get_height()
+        self.image = pygame.transform.scale(self.images[0], (int(self.width * scale), int(self.height * scale)))
+        self.rect = self.image.get_rect(center=(x, y))
+        # self.rect.topleft = (x, y)
 
     def draw(self, surface):
         global button_clicked
@@ -114,9 +121,12 @@ class Button:
         mouse_position = pygame.mouse.get_pos()
 
         if self.rect.collidepoint(mouse_position):
+            self.image = pygame.transform.scale(self.images[1], (int(self.width * self.scale), int(self.height * self.scale)))
             if pygame.mouse.get_pressed()[0] == 1 and not button_clicked:
                 button_clicked = True
                 action = True
+        else:
+            self.image = pygame.transform.scale(self.images[0], (int(self.width * self.scale), int(self.height * self.scale)))
 
         surface.blit(self.image, (self.rect.x, self.rect.y))
 
@@ -620,13 +630,13 @@ def esc_pause_menu():
     global window_mode
     global game_paused
     global start_timer
-    exit_button = Button(250, 200, exit_img, 0.8)
+    quit_button = Button(WIDTH / 2, 350, QUIT_BUTTON, 5)
     pause_menu = pygame.Surface((WIDTH, HEIGHT))
     pause_menu.set_colorkey((0, 0, 0))
     pause_menu.set_alpha(150)
     pygame.draw.rect(pause_menu, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
     WIN.blit(pause_menu, (0, 0))
-    if exit_button.draw(WIN):
+    if quit_button.draw(WIN):
         window_mode = 'menu'
         update_game_settings()
         game_paused = False
@@ -671,7 +681,7 @@ def menu_car_spinning():
     car_spin = pygame.transform.scale(CAR_SPINNING[car_spin_image],
                                             (CAR_SPINNING[car_spin_image].get_width() * CAR_SCALE,
                                              CAR_SPINNING[car_spin_image].get_height() * CAR_SCALE))
-    WIN.blit(car_spin, (car_spin_on_screen_position_x, PLAYER_ON_SCREEN_POSITION_Y))
+    WIN.blit(car_spin, (car_spin_on_screen_position_x, PLAYER_ON_SCREEN_POSITION_Y + 30))
     if car_frame % 10 == 0:
         car_spin_image = (car_spin_image + 1) % 9
         car_frame = 0
@@ -681,16 +691,17 @@ def draw_menu_window():
     global window_mode
     global run
 
-    start_button = Button(100, 200, start_img, 0.8)
-    exit_button = Button(450, 200, exit_img, 0.8)
+    play_button = Button(WIDTH / 2, 370, PLAY_BUTTON, 4.5)
+    quit_button = Button(WIDTH / 2, 470, QUIT_BUTTON, 4.5)
 
     WIN.fill(BLUE)
+    WIN.blit(MENU_BACKGROUND_IMAGE, (0, 0))
     menu_car_spinning()
 
-    if start_button.draw(WIN):
+    if play_button.draw(WIN):
         screen_fade_in(2)
         window_mode = 'game'
-    if exit_button.draw(WIN):
+    if quit_button.draw(WIN):
         run = False
 
     pygame.display.update()
