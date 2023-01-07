@@ -941,6 +941,20 @@ def update_game_settings():
     angle = 0
 
 
+def read_saved_tracks():
+    global saved_tracks
+
+    with open('saved_tracks_data.json') as json_file:
+        data = json.load(json_file)
+
+    saved_tracks = data
+
+
+def save_saved_tracks():
+    with open('saved_tracks_data.json', 'w') as out_file:
+        json.dump(saved_tracks, out_file)
+
+
 pygame.font.init()
 font_default = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 25)
 
@@ -972,7 +986,7 @@ font_speed_num = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 1
 current_curve = 0
 background_x_start_position = 0
 
-window_mode = 'menu'
+window_mode = 'start'
 run = True
 game_paused = False
 
@@ -990,6 +1004,8 @@ def main():
 
     pygame.init()
     clock = pygame.time.Clock()
+
+    read_saved_tracks()
 
     while run:
         clock.tick(FPS)
@@ -1013,6 +1029,7 @@ def main():
         if pygame.mouse.get_pressed()[0] == 0:
             button_clicked = False
 
+    save_saved_tracks()
     pygame.quit()
 
 
