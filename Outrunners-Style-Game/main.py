@@ -5,6 +5,8 @@ from math import floor, sqrt, cos, sin
 import pygame
 import pygame.freetype
 import os
+import datetime
+import json
 
 from pygame import Rect
 
@@ -12,7 +14,7 @@ from pygame import Rect
 WIDTH, HEIGHT = 960, 720
 BLUE = (81, 116, 240)
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Project Jagged Ferrari")
+pygame.display.set_caption("PJF: Project Jagged Ferrari")
 PYGAME_ICON = pygame.image.load(os.path.join('Assets', 'player_car.png'))
 pygame.display.set_icon(PYGAME_ICON)
 
@@ -26,7 +28,8 @@ CAR_SPIN_6 = pygame.image.load(os.path.join('Assets', 'car_spin_6.png'))
 CAR_SPIN_7 = pygame.image.load(os.path.join('Assets', 'car_spin_7.png'))
 CAR_SPIN_8 = pygame.image.load(os.path.join('Assets', 'car_spin_8.png'))
 CAR_SPIN_9 = pygame.image.load(os.path.join('Assets', 'car_spin_9.png'))
-CAR_SPINNING = [CAR_SPIN_1, CAR_SPIN_2, CAR_SPIN_3, CAR_SPIN_4, CAR_SPIN_5, CAR_SPIN_6, CAR_SPIN_7, CAR_SPIN_8, CAR_SPIN_9]
+CAR_SPINNING = [CAR_SPIN_1, CAR_SPIN_2, CAR_SPIN_3, CAR_SPIN_4, CAR_SPIN_5, CAR_SPIN_6, CAR_SPIN_7, CAR_SPIN_8,
+                CAR_SPIN_9]
 
 ''' Background image '''
 BACKGROUND_IMAGE = pygame.image.load(os.path.join('Assets', 'background.jpg'))
@@ -34,6 +37,7 @@ BACKGROUND_SCALE = 0.38
 BACKGROUND_IMAGE_WIDTH = BACKGROUND_IMAGE.get_width() * BACKGROUND_SCALE
 BACKGROUND_IMAGE_HEIGHT = BACKGROUND_IMAGE.get_height() * BACKGROUND_SCALE
 MENU_BACKGROUND_IMAGE = pygame.image.load(os.path.join('Assets', 'menu_background.png'))
+TRACK_MENU_BACKGROUND_IMAGE = pygame.image.load(os.path.join('Assets', 'track_menu_background.png'))
 
 ''' Button images '''
 start_img = pygame.image.load(os.path.join('Assets', 'start_btn.png')).convert_alpha()
@@ -44,6 +48,15 @@ PLAY_BUTTON = [BUTTON_PLAY_UNPRESSED_IMAGE, BUTTON_PLAY_PRESSED_IMAGE]
 BUTTON_QUIT_UNPRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_quit_unpressed.png')).convert_alpha()
 BUTTON_QUIT_PRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_quit_pressed.png')).convert_alpha()
 QUIT_BUTTON = [BUTTON_QUIT_UNPRESSED_IMAGE, BUTTON_QUIT_PRESSED_IMAGE]
+BUTTON_SAVE_UNPRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_save_unpressed.png')).convert_alpha()
+BUTTON_SAVE_PRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_save_pressed.png')).convert_alpha()
+SAVE_BUTTON = [BUTTON_SAVE_UNPRESSED_IMAGE, BUTTON_SAVE_PRESSED_IMAGE]
+BUTTON_X_UNPRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_x_unpressed.png')).convert_alpha()
+BUTTON_X_PRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_x_pressed.png')).convert_alpha()
+X_BUTTON = [BUTTON_X_UNPRESSED_IMAGE, BUTTON_X_PRESSED_IMAGE]
+BUTTON_BACK_UNPRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_back_unpressed.png')).convert_alpha()
+BUTTON_BACK_PRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_back_pressed.png')).convert_alpha()
+BACK_BUTTON = [BUTTON_BACK_UNPRESSED_IMAGE, BUTTON_BACK_PRESSED_IMAGE]
 
 ''' Player car image '''
 PLAYER_CAR_STRAIGHT_IMAGE = pygame.image.load(os.path.join('Assets', 'player_car.png'))
@@ -65,10 +78,11 @@ SEGMENT_LENGTH = 200
 ROAD_WIDTH = 2000
 RUMBLE_LENGTH = 3
 LANES = 3
-COLORS = {'light': {'road': (120, 120, 120), 'grass': (167, 235, 108), 'rumble': (219, 13, 13), 'lane': (223, 228, 237)},
-          # light rumble is red, lane is white
-          'dark': {'road': (115, 115, 115), 'grass': (154, 219, 96), 'rumble': (223, 228, 237),
-                   'lane': (115, 115, 115)}}  # dark rumble is white, lane is road color
+COLORS = {
+    'light': {'road': (120, 120, 120), 'grass': (167, 235, 108), 'rumble': (219, 13, 13), 'lane': (223, 228, 237)},
+    # light rumble is red, lane is white
+    'dark': {'road': (115, 115, 115), 'grass': (154, 219, 96), 'rumble': (223, 228, 237),
+             'lane': (115, 115, 115)}}  # dark rumble is white, lane is road color
 START_FINISH_SEGMENT_IMAGE = pygame.image.load(os.path.join('Assets', 'checkered_texture.jpg'))
 START_FINISH_SEGMENT = START_FINISH_SEGMENT_IMAGE.get_rect()
 
@@ -104,6 +118,7 @@ MF_LOGO = pygame.image.load(os.path.join('Assets', 'munefrakt_logo.png'))
 
 button_clicked = False
 
+
 class Button:
     def __init__(self, x, y, images, scale):
         self.images = images
@@ -112,7 +127,7 @@ class Button:
         self.height = images[0].get_height()
         self.image = pygame.transform.scale(self.images[0], (int(self.width * scale), int(self.height * scale)))
         self.rect = self.image.get_rect(center=(x, y))
-        # self.rect.topleft = (x, y)
+        self.active = True
 
     def draw(self, surface):
         global button_clicked
@@ -120,13 +135,17 @@ class Button:
         action = False
         mouse_position = pygame.mouse.get_pos()
 
-        if self.rect.collidepoint(mouse_position):
-            self.image = pygame.transform.scale(self.images[1], (int(self.width * self.scale), int(self.height * self.scale)))
+        if self.rect.collidepoint(mouse_position) and self.active:
+            self.image = pygame.transform.scale(self.images[1],
+                                                (int(self.width * self.scale), int(self.height * self.scale)))
             if pygame.mouse.get_pressed()[0] == 1 and not button_clicked:
                 button_clicked = True
                 action = True
         else:
-            self.image = pygame.transform.scale(self.images[0], (int(self.width * self.scale), int(self.height * self.scale)))
+            self.image = pygame.transform.scale(self.images[0],
+                                                (int(self.width * self.scale), int(self.height * self.scale)))
+            if not self.active:
+                self.image.fill((79, 79, 79), special_flags=pygame.BLEND_RGB_MULT)
 
         surface.blit(self.image, (self.rect.x, self.rect.y))
 
@@ -145,7 +164,8 @@ class SmokeParticle:
         self.time_rate = 5
         self.k = 0.02 * random.random() * random.choice([-1, 1])
         self.alive = True
-        self.image = pygame.transform.scale(PARTICLE_IMAGE, (PARTICLE_IMAGE.get_width() * self.scale, PARTICLE_IMAGE.get_height() * self.scale))
+        self.image = pygame.transform.scale(PARTICLE_IMAGE, (
+            PARTICLE_IMAGE.get_width() * self.scale, PARTICLE_IMAGE.get_height() * self.scale))
 
     def update_particle(self):
         self.x += self.x_vel
@@ -158,7 +178,8 @@ class SmokeParticle:
         self.time_rate -= 0.05
         if self.time_rate < 3:
             self.time_rate = 3
-        self.image = pygame.transform.scale(PARTICLE_IMAGE, (PARTICLE_IMAGE.get_width() * self.scale, PARTICLE_IMAGE.get_height() * self.scale))
+        self.image = pygame.transform.scale(PARTICLE_IMAGE, (
+            PARTICLE_IMAGE.get_width() * self.scale, PARTICLE_IMAGE.get_height() * self.scale))
 
     def draw(self):
         if self.is_dirt:
@@ -167,7 +188,8 @@ class SmokeParticle:
 
 
 class Smoke:
-    def __init__(self, x=PLAYER_ON_SCREEN_POSITION_X + 20, y=PLAYER_ON_SCREEN_POSITION_Y + (PLAYER_CAR_IMAGE_HEIGHT - 3) * CAR_SCALE):
+    def __init__(self, x=PLAYER_ON_SCREEN_POSITION_X + 20,
+                 y=PLAYER_ON_SCREEN_POSITION_Y + (PLAYER_CAR_IMAGE_HEIGHT - 3) * CAR_SCALE):
         self.x = x
         self.y = y
         self.left_particles = []
@@ -180,7 +202,8 @@ class Smoke:
         if self.frames % 5 == 0:
             self.frames = 0
             self.left_particles.append(SmokeParticle(self.x, self.y, self.is_dirt))
-            self.right_particles.append(SmokeParticle(self.x + PLAYER_CAR_IMAGE_WIDTH * CAR_SCALE - 40, self.y, self.is_dirt))
+            self.right_particles.append(
+                SmokeParticle(self.x + PLAYER_CAR_IMAGE_WIDTH * CAR_SCALE - 40, self.y, self.is_dirt))
             self.all_particles = self.left_particles + self.right_particles
 
     def update(self):
@@ -197,18 +220,36 @@ class Smoke:
 smoke = Smoke()
 
 
-def get_last_y(index):
-    if index != 0:
-        return road_segments[index - 1]['p2']['world']['y']
-    else:
-        return road_segments[NUMBER_OF_SEGMENTS_ON_TRACK - 1]['p2']['world']['y']
+class Sprite:
+    def __init__(self, x, y, image, scale):
+        self.x = x
+        self.y = y
+        self.image = image
+        self.scale = scale
+        self.sprite_width = image.get_width() * self.scale
+        self.sprite_height = image.get_height() * self.scale
+        self.image = pygame.transform.scale(self.image, (int(self.sprite_width), int(self.sprite_height)))
+        self.rect = self.image.get_rect(center=(x, y))
+
+    def update(self):
+        pass
+
+    def draw(self):
+        WIN.blit(self.image, (self.rect.x, self.rect.y))
 
 
-def set_hills(index, length, y_value):
-    for i in range(length):
-        if index != 0:
-            road_segments[index + i]['p2']['world']['y'] += y_value
-            road_segments[index + i]['p1']['world']['y'] = get_last_y(index + i - 1)
+# def get_last_y(index):
+#     if index != 0:
+#         return road_segments[index - 1]['p2']['world']['y']
+#     else:
+#         return road_segments[NUMBER_OF_SEGMENTS_ON_TRACK - 1]['p2']['world']['y']
+#
+#
+# def set_hills(index, length, y_value):
+#     for i in range(length):
+#         if index != 0:
+#             road_segments[index + i]['p2']['world']['y'] += y_value
+#             road_segments[index + i]['p1']['world']['y'] = get_last_y(index + i - 1)
 
 
 def create_section(number_of_segments):
@@ -265,6 +306,8 @@ def generate_track():
 
 
 ''' Returns a segment the car is currently on '''
+
+
 def find_segment_by_z_value(z_value):
     return road_segments[floor(z_value / SEGMENT_LENGTH) % len(road_segments)]
 
@@ -320,6 +363,8 @@ def draw_segment(index, x1, y1, w1, x2, y2, w2, color):
 
 
 ''' Setting player's position (z value) on the track '''
+
+
 def increase_z_position(player_current_position, player_traveled_distance, length_of_track):
     global position
     global last_position
@@ -335,6 +380,8 @@ def increase_z_position(player_current_position, player_traveled_distance, lengt
 
 
 ''' Calculate track's x value offset on the screen'''
+
+
 def calculate_curve_x_value(segment_length, radius):
     # print(f"\rY position: {y}", end=' ')
     if radius == 0:
@@ -393,6 +440,8 @@ def render_track():
 
 
 ''' Controlling player's speed, current z and x position and car animations '''
+
+
 def car_steering():
     global current_speed
     global position_x
@@ -454,13 +503,14 @@ def car_steering():
             current_speed = 0
 
     if base_segment['radius'] != 0:
-        position_x += dt * (current_speed / MAX_SPEED)**2 * (20000000 / base_segment['radius'])
+        position_x += dt * (current_speed / MAX_SPEED) ** 2 * (20000000 / base_segment['radius'])
 
 
 def check_best_time():
     global best_time
     global last_time
     global timer
+    global saved_track_index
 
     new_time = timer
     last_time = new_time
@@ -468,6 +518,8 @@ def check_best_time():
         best_time = new_time
     elif new_time < best_time:
         best_time = new_time
+        if saved_track_index is not None:
+            saved_tracks[saved_track_index]['best time'] = best_time
 
     timer = 0
 
@@ -489,7 +541,8 @@ def check_lap_number():
 def render_player():
     player_on_screen_position_x = WIDTH / 2 - (current_car_orientation.get_width() * CAR_SCALE) / 2
     player_car = pygame.transform.scale(current_car_orientation,
-                                        (current_car_orientation.get_width() * CAR_SCALE, current_car_orientation.get_height() * CAR_SCALE))
+                                        (current_car_orientation.get_width() * CAR_SCALE,
+                                         current_car_orientation.get_height() * CAR_SCALE))
     WIN.blit(player_car, (player_on_screen_position_x, PLAYER_ON_SCREEN_POSITION_Y))
 
 
@@ -510,16 +563,20 @@ def draw_gauge(rot_x, rot_y):
     pygame.draw.rect(gauge, (120, 120, 120), digital_speedo)
     pygame.draw.rect(gauge, (1, 1, 1), digital_speedo, 2)
 
-    text_speed = font_speed.render(f"{round(240 * current_speed / MAX_SPEED, 1)}", True, (1, 1, 1))
+    text_speed = font_speed.render(f"{round(240 * current_speed / MAX_SPEED, 1)}", False, (1, 1, 1))
     gauge.blit(text_speed, (gauge_radius / 2 + 5, gauge_radius + 32))
 
     speed_num = 0
     for i in range(13):
         line_rot = (2 * math.pi * 60 / 360) + 2 * math.pi * 20 / 360 * i
-        new_x1 = cos(line_rot) * (gauge_radius - gauge_radius) - sin(line_rot) * (gauge_radius * 2 - gauge_radius) + gauge_radius
-        new_y1 = sin(line_rot) * (gauge_radius - gauge_radius) + cos(line_rot) * (gauge_radius * 2 - gauge_radius) + gauge_radius
-        new_x2 = cos(line_rot) * (gauge_radius - gauge_radius) - sin(line_rot) * ((gauge_radius * 2 - 15) - gauge_radius) + gauge_radius
-        new_y2 = sin(line_rot) * (gauge_radius - gauge_radius) + cos(line_rot) * ((gauge_radius * 2 - 15) - gauge_radius) + gauge_radius
+        new_x1 = cos(line_rot) * (gauge_radius - gauge_radius) - sin(line_rot) * (
+                    gauge_radius * 2 - gauge_radius) + gauge_radius
+        new_y1 = sin(line_rot) * (gauge_radius - gauge_radius) + cos(line_rot) * (
+                    gauge_radius * 2 - gauge_radius) + gauge_radius
+        new_x2 = cos(line_rot) * (gauge_radius - gauge_radius) - sin(line_rot) * (
+                    (gauge_radius * 2 - 15) - gauge_radius) + gauge_radius
+        new_y2 = sin(line_rot) * (gauge_radius - gauge_radius) + cos(line_rot) * (
+                    (gauge_radius * 2 - 15) - gauge_radius) + gauge_radius
         pygame.draw.line(gauge, orange_color, (new_x2, new_y2), (new_x1, new_y1), 3)
         text_speed_num = font_speed_num.render(f"{speed_num}", True, orange_color)
         if i < 6:
@@ -534,6 +591,7 @@ def draw_gauge(rot_x, rot_y):
 
 
 angle = 0
+
 
 def render_speedo():
     global angle
@@ -552,15 +610,27 @@ def render_speedo():
 
 
 def render_ui():
-    text_timer = font_timer.render(f"Time: {round(timer, 3)}", True, 'black')
-    text_lap = font_lap.render(f"Lap: {lap}", True, 'black')
-    text_best_time = font_best_time.render(f"Best Time: {round(best_time, 3)}", True, 'black')
-    text_last_time = font_best_time.render(f"Last Time: {round(last_time, 3)}", True, 'black')
-    text_game_info = font_game_info.render(f"Press ESC to pause game", True, 'grey')
-    WIN.blit(text_best_time, (20, 10))
-    WIN.blit(text_last_time, (20, 50))
-    WIN.blit(text_timer, ((WIDTH - 70) / 2, 10))
-    WIN.blit(text_lap, (WIDTH - 120, 10))
+    text_timer = font_timer.render(f"Time: {round(timer, 3)}", False, 'white')
+    rect_timer = text_timer.get_rect(topleft=(WIDTH / 2 - 55, 10))
+    draw_text_outline(text_timer, rect_timer, 2)
+    WIN.blit(text_timer, rect_timer)
+
+    text_lap = font_lap.render(f"Lap: {lap}", False, 'white')
+    rect_lap = text_timer.get_rect(topleft=(WIDTH - 120, 10))
+    draw_text_outline(text_lap, rect_lap, 2)
+    WIN.blit(text_lap, rect_lap)
+
+    text_best_time = font_best_time.render(f"Best Time: {round(best_time, 3)}", False, 'white')
+    rect_best_time = text_timer.get_rect(topleft=(20, 10))
+    draw_text_outline(text_best_time, rect_best_time, 2)
+    WIN.blit(text_best_time, rect_best_time)
+
+    text_last_time = font_best_time.render(f"Last Time: {round(last_time, 3)}", False, 'white')
+    rect_last_time = text_timer.get_rect(topleft=(20, 50))
+    draw_text_outline(text_last_time, rect_last_time, 2)
+    WIN.blit(text_last_time, rect_last_time)
+
+    text_game_info = font_game_info.render(f"Press ESC to pause game", False, 'grey')
     WIN.blit(text_game_info, (WIDTH - 150, HEIGHT - 30))
     render_speedo()
 
@@ -584,6 +654,7 @@ def render_background():
 
 
 esc_pressed = False
+
 
 def draw_game_window():
     global position
@@ -618,7 +689,6 @@ def draw_game_window():
 
         global start_timer
         if not start_timer:
-            # screen_fade_out()
             start_timer = True
     else:
         esc_pause_menu()
@@ -630,7 +700,11 @@ def esc_pause_menu():
     global window_mode
     global game_paused
     global start_timer
-    quit_button = Button(WIDTH / 2, 350, QUIT_BUTTON, 5)
+    global saved_tracks
+    global saved_track_index
+
+    save_button = Button(WIDTH / 2, 320, SAVE_BUTTON, 4.5)
+    quit_button = Button(WIDTH / 2, 420, QUIT_BUTTON, 4.5)
     pause_menu = pygame.Surface((WIDTH, HEIGHT))
     pause_menu.set_colorkey((0, 0, 0))
     pause_menu.set_alpha(150)
@@ -643,6 +717,16 @@ def esc_pause_menu():
         start_timer = False
         screen_fade_in(2)
 
+    if saved_track_index is not None:
+        save_button.active = False
+    else:
+        save_button.active = True
+
+    if save_button.draw(WIN) and saved_track_index is None:
+        if len(saved_tracks) < 5:
+            saved_tracks.append({'name': f'{datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")}', 'track': road_segments, 'best time': best_time})
+            saved_track_index = len(saved_tracks)
+
 
 def screen_fade_in(step):
     fade_in = pygame.Surface((WIDTH, HEIGHT))
@@ -652,25 +736,27 @@ def screen_fade_in(step):
         fade_in.set_alpha(alpha)
         pygame.draw.rect(fade_in, (1, 1, 1), (0, 0, WIDTH, HEIGHT))
         WIN.blit(fade_in, (0, 0))
-        print(f"\rAlpha value: {alpha}", end=' ')
+        # print(f"\rAlpha value: {alpha}", end=' ')
         pygame.display.update()
 
-def screen_fade_out():
-    fade_out = pygame.Surface((WIDTH, HEIGHT))
-    fade_out.set_colorkey((0, 0, 0))
 
-    alpha = 255
-    while alpha >= 0:
-        fade_out.set_alpha(alpha)
-        pygame.draw.rect(fade_out, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
-        WIN.blit(fade_out, (0, 0))
-        pygame.display.update()
-        print(f"\rAlpha value: {alpha}", end=' ')
-        alpha -= 1
+# def screen_fade_out():
+#     fade_out = pygame.Surface((WIDTH, HEIGHT))
+#     fade_out.set_colorkey((0, 0, 0))
+#
+#     alpha = 255
+#     while alpha >= 0:
+#         fade_out.set_alpha(alpha)
+#         pygame.draw.rect(fade_out, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
+#         WIN.blit(fade_out, (0, 0))
+#         pygame.display.update()
+#         # print(f"\rAlpha value: {alpha}", end=' ')
+#         alpha -= 1
 
 
 car_frame = 0
 car_spin_image = 0
+
 
 def menu_car_spinning():
     global car_frame
@@ -679,8 +765,8 @@ def menu_car_spinning():
 
     car_spin_on_screen_position_x = WIDTH / 2 - (CAR_SPINNING[car_spin_image].get_width() * CAR_SCALE) / 2
     car_spin = pygame.transform.scale(CAR_SPINNING[car_spin_image],
-                                            (CAR_SPINNING[car_spin_image].get_width() * CAR_SCALE,
-                                             CAR_SPINNING[car_spin_image].get_height() * CAR_SCALE))
+                                      (CAR_SPINNING[car_spin_image].get_width() * CAR_SCALE,
+                                       CAR_SPINNING[car_spin_image].get_height() * CAR_SCALE))
     WIN.blit(car_spin, (car_spin_on_screen_position_x, PLAYER_ON_SCREEN_POSITION_Y + 30))
     if car_frame % 10 == 0:
         car_spin_image = (car_spin_image + 1) % 9
@@ -690,6 +776,7 @@ def menu_car_spinning():
 def draw_menu_window():
     global window_mode
     global run
+    global saved_track_index
 
     play_button = Button(WIDTH / 2, 370, PLAY_BUTTON, 4.5)
     quit_button = Button(WIDTH / 2, 470, QUIT_BUTTON, 4.5)
@@ -700,14 +787,97 @@ def draw_menu_window():
 
     if play_button.draw(WIN):
         screen_fade_in(2)
-        window_mode = 'game'
+        if len(saved_tracks) != 0:
+            window_mode = 'tracks'
+        else:
+            window_mode = 'game'
+            saved_track_index = None
     if quit_button.draw(WIN):
         run = False
 
     pygame.display.update()
 
 
+saved_track_index = None
+
+
+def load_saved_track(index):
+    global road_segments
+    global best_time
+    global saved_track_index
+
+    road_segments = saved_tracks[index]['track']
+    best_time = saved_tracks[index]['best time']
+    saved_track_index = index
+
+
+def show_saved_tracks():
+    global window_mode
+
+    for i in range(len(saved_tracks)):
+        track_play_button = Button(WIDTH / 2 + 90, 200 + (i * 65), PLAY_BUTTON, 3)
+        track_delete_button = Button(WIDTH / 2 + 170, 200 + (i * 65), X_BUTTON, 2)
+
+        text_saved_track = font_saved_track.render(f"{saved_tracks[i]['name']}", False, 'white')
+        rect = text_saved_track.get_rect(center=(WIDTH / 2 - 100, 200 + (i * 65)))
+        draw_text_outline(text_saved_track, rect, 2)
+        WIN.blit(text_saved_track, rect)
+
+        if track_play_button.draw(WIN):
+            screen_fade_in(2)
+            load_saved_track(i)
+            window_mode = 'game'
+        if track_delete_button.draw(WIN):
+            del saved_tracks[i]
+            break
+
+
+def draw_tracks_menu_window():
+    global window_mode
+    global saved_track_index
+
+    play_button = Button(WIDTH / 2, 650, PLAY_BUTTON, 4.5)
+    back_button = Button(100, 650, BACK_BUTTON, 4.5)
+
+    WIN.fill(BLUE)
+    WIN.blit(TRACK_MENU_BACKGROUND_IMAGE, (0, 0))
+
+    text_saved_tracks = font_saved_tracks.render(f"Select saved track", False, 'white')
+    rect = text_saved_tracks.get_rect(center=(WIDTH / 2, 100))
+    draw_text_outline(text_saved_tracks, rect, 3)
+
+    WIN.blit(text_saved_tracks, rect)
+
+    show_saved_tracks()
+
+    if play_button.draw(WIN):
+        screen_fade_in(2)
+        saved_track_index = None
+        window_mode = 'game'
+    if back_button.draw(WIN):
+        screen_fade_in(2)
+        window_mode = 'menu'
+
+    pygame.display.update()
+
+
+def draw_text_outline(text, rect, size):
+    mask = pygame.mask.from_surface(text)
+    mask_surf = mask.to_surface()
+    mask_surf.set_colorkey((0, 0, 0))
+    mask_surf.fill((36, 36, 36), special_flags=pygame.BLEND_RGB_MULT)
+    WIN.blit(mask_surf, (rect[0] - size, rect[1]))
+    WIN.blit(mask_surf, (rect[0] + size, rect[1]))
+    WIN.blit(mask_surf, (rect[0], rect[1] - size))
+    WIN.blit(mask_surf, (rect[0], rect[1] + size))
+
+
+fade_in_alpha = 255
+
+
 def render_start_screen():
+    global fade_in_alpha
+    global window_mode
     WIN.fill('black')
     scale = 3
     mf_logo = pygame.transform.scale(MF_LOGO, (MF_LOGO.get_width() * scale, MF_LOGO.get_height() * scale))
@@ -716,17 +886,17 @@ def render_start_screen():
     fade_out = pygame.Surface((WIDTH, HEIGHT))
     fade_out.set_colorkey((0, 0, 0))
 
-    alpha = 255
-    while alpha >= 0:
-        fade_out.set_alpha(alpha)
-        pygame.draw.rect(fade_out, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
-        WIN.blit(mf_logo, mf_logo.get_rect(center=(WIDTH / 2, HEIGHT / 2)))
-        WIN.blit(fade_out, (0, 0))
-        pygame.display.update()
-        print(f"\rAlpha value: {alpha}", end=' ')
-        alpha -= 1
+    fade_out.set_alpha(fade_in_alpha)
+    pygame.draw.rect(fade_out, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
+    WIN.blit(mf_logo, mf_logo.get_rect(center=(WIDTH / 2, HEIGHT / 2)))
+    WIN.blit(fade_out, (0, 0))
+    pygame.display.update()
+    print(f"\rAlpha value: {fade_in_alpha}", end=' ')
+    fade_in_alpha -= 1
 
-    screen_fade_in(1)
+    if fade_in_alpha < 0:
+        screen_fade_in(1)
+        window_mode = 'menu'
 
 
 def update_game_settings():
@@ -808,6 +978,11 @@ game_paused = False
 
 font_game_info = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 10)
 
+saved_tracks = []
+
+font_saved_tracks = pygame.font.Font(os.path.join('Assets', '8-bit Arcade In.ttf'), 80)
+font_saved_track = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 20)
+
 def main():
     global timer
     global run
@@ -815,8 +990,6 @@ def main():
 
     pygame.init()
     clock = pygame.time.Clock()
-
-    render_start_screen()
 
     while run:
         clock.tick(FPS)
@@ -826,8 +999,12 @@ def main():
             if event.type == pygame.QUIT:
                 run = False
 
-        if window_mode == 'menu':
+        if window_mode == 'start':
+            render_start_screen()
+        elif window_mode == 'menu':
             draw_menu_window()
+        elif window_mode == 'tracks':
+            draw_tracks_menu_window()
         elif window_mode == 'game':
             draw_game_window()
 
