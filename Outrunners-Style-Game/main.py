@@ -313,11 +313,11 @@ def find_segment_by_z_value(z_value):
     return road_segments[floor(z_value / SEGMENT_LENGTH) % len(road_segments)]
 
 
-def calculate_3D_view(p, cameraX, cameraY, cameraZ, cameraDepth):
-    p['camera']['x'] = (p['world']['x'] or 0) - cameraX
-    p['camera']['y'] = (p['world']['y'] or 0) - cameraY
-    p['camera']['z'] = (p['world']['z'] or 0) - cameraZ
-    p['screen']['scale'] = cameraDepth / p['camera']['z']
+def calculate_3D_view(p, camera_x, camera_y, camera_z, camera_depth):
+    p['camera']['x'] = (p['world']['x'] or 0) - camera_x
+    p['camera']['y'] = (p['world']['y'] or 0) - camera_y
+    p['camera']['z'] = (p['world']['z'] or 0) - camera_z
+    p['screen']['scale'] = camera_depth / p['camera']['z']
     p['screen']['x'] = round((WIDTH / 2) + (p['screen']['scale'] * p['camera']['x'] * WIDTH / 2))
     p['screen']['y'] = round((HEIGHT / 2) - (p['screen']['scale'] * p['camera']['y'] * HEIGHT / 2))
     p['screen']['w'] = round(p['screen']['scale'] * ROAD_WIDTH * WIDTH / 2)
@@ -437,7 +437,6 @@ def render_track():
                      segment['color'])
 
         maxy = segment['p2']['screen']['y']
-        # print(i)
 
 
 ''' Controlling player's speed, current z and x position and car animations '''
@@ -515,14 +514,12 @@ def check_best_time():
 
     new_time = timer
     last_time = new_time
-    if best_time == 0:
-        best_time = new_time
-    elif new_time < best_time:
+    if new_time < best_time or best_time == [0, 0, 0]:
         best_time = new_time
         if saved_track_index is not None:
             saved_tracks[saved_track_index]['best time'] = best_time
 
-    timer = 0
+    timer = [0, 0, 0]
 
 
 def check_lap_number():
@@ -611,8 +608,8 @@ def render_speedo():
 
 
 def render_ui():
-    text_timer = font_timer.render(f"Time: {round(timer, 3)}", False, 'white')
-    rect_timer = text_timer.get_rect(topleft=(WIDTH / 2 - 55, 10))
+    text_timer = font_timer.render(f"{timer[0]:02}:{timer[1]:02}:{int(str(timer[2])[:3])}", False, 'white')
+    rect_timer = text_timer.get_rect(topleft=(WIDTH / 2 - 75, 10))
     draw_text_outline(text_timer, rect_timer, 2)
     WIN.blit(text_timer, rect_timer)
 
@@ -621,12 +618,12 @@ def render_ui():
     draw_text_outline(text_lap, rect_lap, 2)
     WIN.blit(text_lap, rect_lap)
 
-    text_best_time = font_best_time.render(f"Best Time: {round(best_time, 3)}", False, 'white')
+    text_best_time = font_best_time.render(f"Best Time: {best_time[0]:02}:{best_time[1]:02}:{int(str(best_time[2])[:3]):03}", False, 'white')
     rect_best_time = text_timer.get_rect(topleft=(20, 10))
     draw_text_outline(text_best_time, rect_best_time, 2)
     WIN.blit(text_best_time, rect_best_time)
 
-    text_last_time = font_best_time.render(f"Last Time: {round(last_time, 3)}", False, 'white')
+    text_last_time = font_best_time.render(f"Last Time: {last_time[0]:02}:{last_time[1]:02}:{int(str(last_time[2])[:3]):03}", False, 'white')
     rect_last_time = text_timer.get_rect(topleft=(20, 50))
     draw_text_outline(text_last_time, rect_last_time, 2)
     WIN.blit(text_last_time, rect_last_time)
@@ -712,7 +709,6 @@ def esc_pause_menu():
     pygame.draw.rect(pause_menu, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
     WIN.blit(pause_menu, (0, 0))
     if quit_button.draw(WIN):
-        # window_mode = 'menu'
         update_game_settings()
         game_paused = False
         start_timer = False
@@ -766,20 +762,6 @@ def screen_fade_in():
         window_mode = fade_in_next_window_mode
 
 
-# def screen_fade_out():
-#     fade_out = pygame.Surface((WIDTH, HEIGHT))
-#     fade_out.set_colorkey((0, 0, 0))
-#
-#     alpha = 255
-#     while alpha >= 0:
-#         fade_out.set_alpha(alpha)
-#         pygame.draw.rect(fade_out, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
-#         WIN.blit(fade_out, (0, 0))
-#         pygame.display.update()
-#         # print(f"\rAlpha value: {alpha}", end=' ')
-#         alpha -= 1
-
-
 car_frame = 0
 car_spin_image = 0
 
@@ -812,13 +794,10 @@ def draw_menu_window():
     menu_car_spinning()
 
     if play_button.draw(WIN):
-        # set_screen_fade_in(2)
         if len(saved_tracks) != 0:
             set_screen_fade_in(buttons_fade_in_value, 'tracks')
-            # window_mode = 'tracks'
         else:
             set_screen_fade_in(buttons_fade_in_value, 'game')
-            # window_mode = 'game'
             saved_track_index = None
     if quit_button.draw(WIN):
         run = False
@@ -847,14 +826,20 @@ def show_saved_tracks():
         track_delete_button = Button(WIDTH / 2 + 170, 200 + (i * 65), X_BUTTON, 2)
 
         text_saved_track = font_saved_track.render(f"{saved_tracks[i]['name']}", False, 'white')
-        rect = text_saved_track.get_rect(center=(WIDTH / 2 - 100, 200 + (i * 65)))
-        draw_text_outline(text_saved_track, rect, 2)
-        WIN.blit(text_saved_track, rect)
+        rect_saved_track = text_saved_track.get_rect(center=(WIDTH / 2 - 100, 200 + (i * 65) - 15))
+        draw_text_outline(text_saved_track, rect_saved_track, 2)
+        WIN.blit(text_saved_track, rect_saved_track)
+
+        text_saved_best_time = font_saved_track.render(
+            f"Best time: {saved_tracks[i]['best time'][0]:02}:{saved_tracks[i]['best time'][1]:02}:{int(str(saved_tracks[i]['best time'][2])[:3]):03}",
+            False, 'white')
+        rect_saved_best_time = text_saved_best_time.get_rect(center=(WIDTH / 2 - 100, 200 + (i * 65) + 15))
+        draw_text_outline(text_saved_best_time, rect_saved_best_time, 2)
+        WIN.blit(text_saved_best_time, rect_saved_best_time)
 
         if track_play_button.draw(WIN):
             set_screen_fade_in(buttons_fade_in_value, 'game')
             load_saved_track(i)
-            # window_mode = 'game'
         if track_delete_button.draw(WIN):
             del saved_tracks[i]
             break
@@ -881,10 +866,8 @@ def draw_tracks_menu_window():
     if play_button.draw(WIN):
         set_screen_fade_in(buttons_fade_in_value, 'game')
         saved_track_index = None
-        # window_mode = 'game'
     if back_button.draw(WIN):
         set_screen_fade_in(buttons_fade_in_value, 'menu')
-        # window_mode = 'menu'
 
     pygame.display.update()
 
@@ -926,12 +909,11 @@ def render_start_screen():
     WIN.blit(mf_logo, mf_logo.get_rect(center=(WIDTH / 2, HEIGHT / 2)))
     WIN.blit(fade_out, (0, 0))
     pygame.display.update()
-    print(f"\rAlpha value: {fade_alpha}", end=' ')
+    # print(f"\rAlpha value: {fade_alpha}", end=' ')
     fade_alpha -= 1
 
     if fade_alpha < 0:
         set_screen_fade_in(3, 'menu')
-        # window_mode = 'menu'
 
 
 def update_game_settings():
@@ -965,9 +947,9 @@ def update_game_settings():
     current_speed = 0
     current_car_orientation = PLAYER_CAR_STRAIGHT_IMAGE
 
-    timer = 0
-    best_time = 0
-    last_time = 0
+    timer = [0, 0, 0]
+    best_time = [0, 0, 0]
+    last_time = [0, 0, 0]
 
     current_curve = 0
     background_x_start_position = 0
@@ -992,7 +974,7 @@ def save_saved_tracks():
 
 
 pygame.font.init()
-font_default = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 25)
+font_default = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 30)
 
 lap = 1
 lap_counted = False
@@ -1008,14 +990,14 @@ current_speed = 0
 font_speed = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 22)
 current_car_orientation = PLAYER_CAR_STRAIGHT_IMAGE
 
-timer = 0
-best_time = 0
-last_time = 0
+timer = [0, 0, 0]  # minutes, seconds, milliseconds
+best_time = [0, 0, 0]
+last_time = [0, 0, 0]
 start_timer = False
-pygame.time.set_timer(pygame.USEREVENT, 100)
+pygame.time.set_timer(pygame.USEREVENT, 1)
 font_timer = font_default
-font_best_time = font_default
-font_last_time = font_default
+font_best_time = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 20)
+font_last_time = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 20)
 
 font_speed_num = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 10)
 
@@ -1049,7 +1031,13 @@ def main():
         clock.tick(FPS)
         for event in pygame.event.get():
             if event.type == pygame.USEREVENT and start_timer and not game_paused:
-                timer += 0.1
+                timer[2] += clock.get_time()
+                if timer[2] >= 10000:
+                    timer[2] = 0
+                    timer[1] += 1
+                    if timer[1] >= 60:
+                        timer[1] = 0
+                        timer[0] += 1
             if event.type == pygame.QUIT:
                 run = False
 
@@ -1064,6 +1052,7 @@ def main():
         elif window_mode == 'game':
             draw_game_window()
 
+        # print(f"\rIndex: {saved_track_index}", end=' ')
         # print(f"\rButton pressed: {button_clicked}", end=' ')
 
         if pygame.mouse.get_pressed()[0] == 0:
