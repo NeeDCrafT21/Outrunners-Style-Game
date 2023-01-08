@@ -714,7 +714,7 @@ def esc_pause_menu():
         start_timer = False
         set_screen_fade_in(2, 'menu')
 
-    if saved_track_index is not None:
+    if saved_track_index is not None or len(saved_tracks) == 5:
         save_button.active = False
     else:
         save_button.active = True
