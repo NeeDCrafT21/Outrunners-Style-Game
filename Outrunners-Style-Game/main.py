@@ -1,3 +1,4 @@
+import genericpath
 import math
 import random
 from math import floor, sqrt, cos, sin
@@ -711,11 +712,11 @@ def esc_pause_menu():
     pygame.draw.rect(pause_menu, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
     WIN.blit(pause_menu, (0, 0))
     if quit_button.draw(WIN):
-        window_mode = 'menu'
+        # window_mode = 'menu'
         update_game_settings()
         game_paused = False
         start_timer = False
-        screen_fade_in(2)
+        set_screen_fade_in(2, 'menu')
 
     if saved_track_index is not None:
         save_button.active = False
@@ -728,16 +729,41 @@ def esc_pause_menu():
             saved_track_index = len(saved_tracks)
 
 
-def screen_fade_in(step):
+fade_in_step = 1
+fade_in_next_window_mode = None
+
+
+def set_screen_fade_in(step, next_window_mode):
+    global fade_in_next_window_mode
+    global fade_in_step
+    global window_mode
+
+    fade_in_step = step
+    fade_in_next_window_mode = next_window_mode
+    window_mode = 'fade in'
+
+
+def screen_fade_in():
+    global window_mode
+    global fade_alpha
+    global fade_in_next_window_mode
+    window_mode = 'fade in'
+
+    if fade_alpha >= 255 or fade_alpha == 0:
+        fade_alpha = 0
+
     fade_in = pygame.Surface((WIDTH, HEIGHT))
     fade_in.set_colorkey((0, 0, 0))
 
-    for alpha in range(0, 255, step):
-        fade_in.set_alpha(alpha)
-        pygame.draw.rect(fade_in, (1, 1, 1), (0, 0, WIDTH, HEIGHT))
-        WIN.blit(fade_in, (0, 0))
-        # print(f"\rAlpha value: {alpha}", end=' ')
-        pygame.display.update()
+    fade_in.set_alpha(fade_alpha)
+    pygame.draw.rect(fade_in, (1, 1, 1), (0, 0, WIDTH, HEIGHT))
+    WIN.blit(fade_in, (0, 0))
+    # print(f"\rAlpha value: {alpha}", end=' ')
+    pygame.display.update()
+    fade_alpha += fade_in_step
+
+    if fade_alpha >= 255:
+        window_mode = fade_in_next_window_mode
 
 
 # def screen_fade_out():
@@ -786,11 +812,13 @@ def draw_menu_window():
     menu_car_spinning()
 
     if play_button.draw(WIN):
-        screen_fade_in(2)
+        # set_screen_fade_in(2)
         if len(saved_tracks) != 0:
-            window_mode = 'tracks'
+            set_screen_fade_in(buttons_fade_in_value, 'tracks')
+            # window_mode = 'tracks'
         else:
-            window_mode = 'game'
+            set_screen_fade_in(buttons_fade_in_value, 'game')
+            # window_mode = 'game'
             saved_track_index = None
     if quit_button.draw(WIN):
         run = False
@@ -824,9 +852,9 @@ def show_saved_tracks():
         WIN.blit(text_saved_track, rect)
 
         if track_play_button.draw(WIN):
-            screen_fade_in(2)
+            set_screen_fade_in(buttons_fade_in_value, 'game')
             load_saved_track(i)
-            window_mode = 'game'
+            # window_mode = 'game'
         if track_delete_button.draw(WIN):
             del saved_tracks[i]
             break
@@ -851,12 +879,12 @@ def draw_tracks_menu_window():
     show_saved_tracks()
 
     if play_button.draw(WIN):
-        screen_fade_in(2)
+        set_screen_fade_in(buttons_fade_in_value, 'game')
         saved_track_index = None
-        window_mode = 'game'
+        # window_mode = 'game'
     if back_button.draw(WIN):
-        screen_fade_in(2)
-        window_mode = 'menu'
+        set_screen_fade_in(buttons_fade_in_value, 'menu')
+        # window_mode = 'menu'
 
     pygame.display.update()
 
@@ -872,13 +900,20 @@ def draw_text_outline(text, rect, size):
     WIN.blit(mask_surf, (rect[0], rect[1] + size))
 
 
-fade_in_alpha = 255
+fade_alpha = 255
 
 
 def render_start_screen():
-    global fade_in_alpha
+    global fade_alpha
     global window_mode
-    WIN.fill('black')
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_ESCAPE]:
+        fade_alpha = 0
+        window_mode = 'menu'
+        return
+
+    WIN.fill((0, 0, 0))
     scale = 3
     mf_logo = pygame.transform.scale(MF_LOGO, (MF_LOGO.get_width() * scale, MF_LOGO.get_height() * scale))
     WIN.blit(mf_logo, mf_logo.get_rect(center=(WIDTH / 2, HEIGHT / 2)))
@@ -886,17 +921,17 @@ def render_start_screen():
     fade_out = pygame.Surface((WIDTH, HEIGHT))
     fade_out.set_colorkey((0, 0, 0))
 
-    fade_out.set_alpha(fade_in_alpha)
+    fade_out.set_alpha(fade_alpha)
     pygame.draw.rect(fade_out, (10, 10, 10), (0, 0, WIDTH, HEIGHT))
     WIN.blit(mf_logo, mf_logo.get_rect(center=(WIDTH / 2, HEIGHT / 2)))
     WIN.blit(fade_out, (0, 0))
     pygame.display.update()
-    print(f"\rAlpha value: {fade_in_alpha}", end=' ')
-    fade_in_alpha -= 1
+    print(f"\rAlpha value: {fade_alpha}", end=' ')
+    fade_alpha -= 1
 
-    if fade_in_alpha < 0:
-        screen_fade_in(1)
-        window_mode = 'menu'
+    if fade_alpha < 0:
+        set_screen_fade_in(3, 'menu')
+        # window_mode = 'menu'
 
 
 def update_game_settings():
@@ -944,10 +979,11 @@ def update_game_settings():
 def read_saved_tracks():
     global saved_tracks
 
-    with open('saved_tracks_data.json') as json_file:
-        data = json.load(json_file)
+    if genericpath.exists('saved_tracks_data.json'):
+        with open('saved_tracks_data.json') as json_file:
+            data = json.load(json_file)
 
-    saved_tracks = data
+        saved_tracks = data
 
 
 def save_saved_tracks():
@@ -997,6 +1033,8 @@ saved_tracks = []
 font_saved_tracks = pygame.font.Font(os.path.join('Assets', '8-bit Arcade In.ttf'), 80)
 font_saved_track = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'), 20)
 
+buttons_fade_in_value = 4
+
 def main():
     global timer
     global run
@@ -1015,7 +1053,9 @@ def main():
             if event.type == pygame.QUIT:
                 run = False
 
-        if window_mode == 'start':
+        if window_mode == 'fade in':
+            screen_fade_in()
+        elif window_mode == 'start':
             render_start_screen()
         elif window_mode == 'menu':
             draw_menu_window()
