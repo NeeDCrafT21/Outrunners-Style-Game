@@ -11,6 +11,8 @@ import json
 
 from pygame import Rect
 
+pygame.init()
+
 ''' Window settings '''
 WIDTH, HEIGHT = 960, 720
 BLUE = (81, 116, 240)
@@ -58,6 +60,27 @@ X_BUTTON = [BUTTON_X_UNPRESSED_IMAGE, BUTTON_X_PRESSED_IMAGE]
 BUTTON_BACK_UNPRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_back_unpressed.png')).convert_alpha()
 BUTTON_BACK_PRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_back_pressed.png')).convert_alpha()
 BACK_BUTTON = [BUTTON_BACK_UNPRESSED_IMAGE, BUTTON_BACK_PRESSED_IMAGE]
+
+''' Sounds '''
+SOUND_BUTTON_NEXT = pygame.mixer.Sound(os.path.join('Sounds', 'button_next.wav'))
+SOUND_BUTTON_NEXT.set_volume(0.2)
+SOUND_BUTTON_BACK = pygame.mixer.Sound(os.path.join('Sounds', 'button_back.wav'))
+SOUND_BUTTON_BACK.set_volume(0.2)
+SOUND_BUTTON_START = pygame.mixer.Sound(os.path.join('Sounds', 'button_start.wav'))
+SOUND_BUTTON_START.set_volume(0.2)
+SOUND_MOUSE_ON_BUTTON = pygame.mixer.Sound(os.path.join('Sounds', 'mouse_on_button.wav'))
+SOUND_MOUSE_ON_BUTTON.set_volume(0.1)
+SOUND_BUTTON_SAVE = pygame.mixer.Sound(os.path.join('Sounds', 'button_save.wav'))
+SOUND_BUTTON_SAVE.set_volume(0.2)
+SOUND_BUTTON_X = pygame.mixer.Sound(os.path.join('Sounds', 'button_x.wav'))
+SOUND_BUTTON_X.set_volume(0.2)
+BUTTON_SOUNDS = {'next': SOUND_BUTTON_NEXT, 'back': SOUND_BUTTON_BACK, 'start': SOUND_BUTTON_START, 'save': SOUND_BUTTON_SAVE, 'x': SOUND_BUTTON_X}
+
+SOUND_COUNT_DOWN = pygame.mixer.Sound(os.path.join('Sounds', 'count_down.wav'))
+SOUND_COUNT_DOWN.set_volume(0.2)
+SOUND_GO = pygame.mixer.Sound(os.path.join('Sounds', 'go.wav'))
+SOUND_GO.set_volume(0.2)
+COUNT_DOWN_SOUNDS = [SOUND_COUNT_DOWN, SOUND_COUNT_DOWN, SOUND_COUNT_DOWN, SOUND_GO]
 
 ''' Player car image '''
 PLAYER_CAR_STRAIGHT_IMAGE = pygame.image.load(os.path.join('Assets', 'player_car.png'))
@@ -118,10 +141,11 @@ GB_LOGO = pygame.image.load(os.path.join('Assets', 'grupa_badawcza_logo.png'))
 MF_LOGO = pygame.image.load(os.path.join('Assets', 'munefrakt_logo.png'))
 
 button_clicked = False
-
+sound_played = False
+mouse_on_button = False
 
 class Button:
-    def __init__(self, x, y, images, scale):
+    def __init__(self, x, y, images, scale, sound_name):
         self.images = images
         self.scale = scale
         self.width = images[0].get_width()
@@ -129,17 +153,24 @@ class Button:
         self.image = pygame.transform.scale(self.images[0], (int(self.width * scale), int(self.height * scale)))
         self.rect = self.image.get_rect(center=(x, y))
         self.active = True
+        self.sounds_name = sound_name
 
     def draw(self, surface):
-        global button_clicked
+        global button_clicked, sound_played, mouse_on_button
 
         action = False
         mouse_position = pygame.mouse.get_pos()
 
         if self.rect.collidepoint(mouse_position) and self.active:
+            mouse_on_button = True
+            if not sound_played:
+                pygame.mixer.Sound.play(SOUND_MOUSE_ON_BUTTON)
+                sound_played = True
             self.image = pygame.transform.scale(self.images[1],
                                                 (int(self.width * self.scale), int(self.height * self.scale)))
             if pygame.mouse.get_pressed()[0] == 1 and not button_clicked:
+                if self.sounds_name is not None:
+                    pygame.mixer.Sound.play(BUTTON_SOUNDS[self.sounds_name])
                 button_clicked = True
                 action = True
         else:
@@ -239,20 +270,6 @@ class Sprite:
         WIN.blit(self.image, (self.rect.x, self.rect.y))
 
 
-# def get_last_y(index):
-#     if index != 0:
-#         return road_segments[index - 1]['p2']['world']['y']
-#     else:
-#         return road_segments[NUMBER_OF_SEGMENTS_ON_TRACK - 1]['p2']['world']['y']
-#
-#
-# def set_hills(index, length, y_value):
-#     for i in range(length):
-#         if index != 0:
-#             road_segments[index + i]['p2']['world']['y'] += y_value
-#             road_segments[index + i]['p1']['world']['y'] = get_last_y(index + i - 1)
-
-
 def create_section(number_of_segments):
     for i in range(number_of_segments):
         road_segments.append(
@@ -313,11 +330,11 @@ def find_segment_by_z_value(z_value):
     return road_segments[floor(z_value / SEGMENT_LENGTH) % len(road_segments)]
 
 
-def calculate_3D_view(p, camera_x, camera_y, camera_z, camera_depth):
-    p['camera']['x'] = (p['world']['x'] or 0) - camera_x
-    p['camera']['y'] = (p['world']['y'] or 0) - camera_y
-    p['camera']['z'] = (p['world']['z'] or 0) - camera_z
-    p['screen']['scale'] = camera_depth / p['camera']['z']
+def calculate_3D_view(p, x_camera, y_camera, z_camera, depth_camera):
+    p['camera']['x'] = (p['world']['x'] or 0) - x_camera
+    p['camera']['y'] = (p['world']['y'] or 0) - y_camera
+    p['camera']['z'] = (p['world']['z'] or 0) - z_camera
+    p['screen']['scale'] = depth_camera / p['camera']['z']
     p['screen']['x'] = round((WIDTH / 2) + (p['screen']['scale'] * p['camera']['x'] * WIDTH / 2))
     p['screen']['y'] = round((HEIGHT / 2) - (p['screen']['scale'] * p['camera']['y'] * HEIGHT / 2))
     p['screen']['w'] = round(p['screen']['scale'] * ROAD_WIDTH * WIDTH / 2)
@@ -367,8 +384,7 @@ def draw_segment(index, x1, y1, w1, x2, y2, w2, color):
 
 
 def increase_z_position(player_current_position, player_traveled_distance, length_of_track):
-    global position
-    global last_position
+    global position, last_position
 
     player_new_position = player_current_position + player_traveled_distance
     while player_new_position >= length_of_track:
@@ -443,9 +459,7 @@ def render_track():
 
 
 def car_steering():
-    global current_speed
-    global position_x
-    global current_car_orientation
+    global current_speed, position_x, current_car_orientation
 
     base_segment = find_segment_by_z_value(position)
     keys = pygame.key.get_pressed()
@@ -507,10 +521,7 @@ def car_steering():
 
 
 def check_best_time():
-    global best_time
-    global last_time
-    global timer
-    global saved_track_index
+    global best_time, last_time, timer, saved_track_index
 
     new_time = timer
     last_time = new_time
@@ -523,8 +534,7 @@ def check_best_time():
 
 
 def check_lap_number():
-    global lap
-    global lap_counted
+    global lap, lap_counted
 
     # print(f"\rPosition: {round(position)} / {round(last_position)}, {lap_counted}", end=' ')
 
@@ -608,7 +618,7 @@ def render_speedo():
 
 
 def render_ui():
-    text_timer = font_timer.render(f"{timer[0]:02}:{timer[1]:02}:{int(str(timer[2])[:3])}", False, 'white')
+    text_timer = font_timer.render(f"{timer[0]:02}:{timer[1]:02}:{int(str(timer[2])[:3]):03}", False, 'white')
     rect_timer = text_timer.get_rect(topleft=(WIDTH / 2 - 75, 10))
     draw_text_outline(text_timer, rect_timer, 2)
     WIN.blit(text_timer, rect_timer)
@@ -651,13 +661,28 @@ def render_background():
         background_x_start_position = 0
 
 
+count_down_frame = 0
+count_down_sound = 0
+race_started = False
+
+
+def race_count_down():
+    global count_down_frame, count_down_sound, race_started
+    count_down_frame += 1
+    if count_down_frame % 80 == 0:
+        count_down_frame = 0
+        pygame.mixer.Sound.play(COUNT_DOWN_SOUNDS[count_down_sound])
+        count_down_sound += 1
+    if count_down_sound == (len(COUNT_DOWN_SOUNDS)):
+        count_down_sound = 0
+        race_started = True
+
+
 esc_pressed = False
 
 
 def draw_game_window():
-    global position
-    global game_paused
-    global esc_pressed
+    global position, game_paused, esc_pressed, start_timer, count_down_sound
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_ESCAPE] and not game_paused and not esc_pressed:
@@ -676,7 +701,9 @@ def draw_game_window():
     render_player()
     render_ui()
 
-    if not game_paused:
+    if not game_paused and not race_started:
+        race_count_down()
+    elif not game_paused and race_started:
         increase_z_position(position, dt * current_speed, track_length)
         check_lap_number()
         car_steering()
@@ -685,7 +712,6 @@ def draw_game_window():
             smoke.update()
             smoke.draw()
 
-        global start_timer
         if not start_timer:
             start_timer = True
     else:
@@ -695,14 +721,10 @@ def draw_game_window():
 
 
 def esc_pause_menu():
-    global window_mode
-    global game_paused
-    global start_timer
-    global saved_tracks
-    global saved_track_index
+    global window_mode, game_paused, start_timer, saved_tracks, saved_track_index
 
-    save_button = Button(WIDTH / 2, 320, SAVE_BUTTON, 4.5)
-    quit_button = Button(WIDTH / 2, 420, QUIT_BUTTON, 4.5)
+    save_button = Button(WIDTH / 2, 320, SAVE_BUTTON, 4.5, 'save')
+    quit_button = Button(WIDTH / 2, 420, QUIT_BUTTON, 4.5, 'back')
     pause_menu = pygame.Surface((WIDTH, HEIGHT))
     pause_menu.set_colorkey((0, 0, 0))
     pause_menu.set_alpha(150)
@@ -730,9 +752,7 @@ fade_in_next_window_mode = None
 
 
 def set_screen_fade_in(step, next_window_mode):
-    global fade_in_next_window_mode
-    global fade_in_step
-    global window_mode
+    global fade_in_next_window_mode, fade_in_step, window_mode
 
     fade_in_step = step
     fade_in_next_window_mode = next_window_mode
@@ -740,9 +760,7 @@ def set_screen_fade_in(step, next_window_mode):
 
 
 def screen_fade_in():
-    global window_mode
-    global fade_alpha
-    global fade_in_next_window_mode
+    global window_mode, fade_alpha, fade_in_next_window_mode
     window_mode = 'fade in'
 
     if fade_alpha >= 255 or fade_alpha == 0:
@@ -767,8 +785,7 @@ car_spin_image = 0
 
 
 def menu_car_spinning():
-    global car_frame
-    global car_spin_image
+    global car_frame, car_spin_image
     car_frame += 1
 
     car_spin_on_screen_position_x = WIDTH / 2 - (CAR_SPINNING[car_spin_image].get_width() * CAR_SCALE) / 2
@@ -782,16 +799,17 @@ def menu_car_spinning():
 
 
 def draw_menu_window():
-    global window_mode
-    global run
-    global saved_track_index
+    global window_mode, run, saved_track_index
 
-    play_button = Button(WIDTH / 2, 370, PLAY_BUTTON, 4.5)
-    quit_button = Button(WIDTH / 2, 470, QUIT_BUTTON, 4.5)
+    play_button = Button(WIDTH / 2, 370, PLAY_BUTTON, 4.5, 'start')
+    quit_button = Button(WIDTH / 2, 470, QUIT_BUTTON, 4.5, None)
 
     WIN.fill(BLUE)
     WIN.blit(MENU_BACKGROUND_IMAGE, (0, 0))
     menu_car_spinning()
+
+    if len(saved_tracks) != 0:
+        play_button.sounds_name = 'next'
 
     if play_button.draw(WIN):
         if len(saved_tracks) != 0:
@@ -809,9 +827,7 @@ saved_track_index = None
 
 
 def load_saved_track(index):
-    global road_segments
-    global best_time
-    global saved_track_index
+    global road_segments, best_time, saved_track_index
 
     road_segments = saved_tracks[index]['track']
     best_time = saved_tracks[index]['best time']
@@ -822,8 +838,8 @@ def show_saved_tracks():
     global window_mode
 
     for i in range(len(saved_tracks)):
-        track_play_button = Button(WIDTH / 2 + 90, 200 + (i * 65), PLAY_BUTTON, 3)
-        track_delete_button = Button(WIDTH / 2 + 170, 200 + (i * 65), X_BUTTON, 2)
+        track_play_button = Button(WIDTH / 2 + 90, 200 + (i * 65), PLAY_BUTTON, 3, 'start')
+        track_delete_button = Button(WIDTH / 2 + 170, 200 + (i * 65), X_BUTTON, 2, 'x')
 
         text_saved_track = font_saved_track.render(f"{saved_tracks[i]['name']}", False, 'white')
         rect_saved_track = text_saved_track.get_rect(center=(WIDTH / 2 - 100, 200 + (i * 65) - 15))
@@ -846,11 +862,10 @@ def show_saved_tracks():
 
 
 def draw_tracks_menu_window():
-    global window_mode
-    global saved_track_index
+    global window_mode, saved_track_index
 
-    play_button = Button(WIDTH / 2, 650, PLAY_BUTTON, 4.5)
-    back_button = Button(100, 650, BACK_BUTTON, 4.5)
+    play_button = Button(WIDTH / 2, 650, PLAY_BUTTON, 4.5, 'start')
+    back_button = Button(100, 650, BACK_BUTTON, 4.5, 'back')
 
     WIN.fill(BLUE)
     WIN.blit(TRACK_MENU_BACKGROUND_IMAGE, (0, 0))
@@ -887,8 +902,7 @@ fade_alpha = 255
 
 
 def render_start_screen():
-    global fade_alpha
-    global window_mode
+    global fade_alpha, window_mode
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_ESCAPE]:
@@ -917,22 +931,9 @@ def render_start_screen():
 
 
 def update_game_settings():
-    global road_segments
-    global lap
-    global lap_counted
-    global track_length
-    global position
-    global last_position
-    global position_x
-    global current_speed
-    global current_car_orientation
-    global timer
-    global best_time
-    global last_time
-    global current_curve
-    global background_x_start_position
-    global smoke
-    global angle
+    global road_segments, lap, lap_counted, track_length, position, last_position, position_x, current_speed,\
+        current_car_orientation, timer, best_time, last_time, current_curve, background_x_start_position, smoke, \
+        angle, race_started, count_down_sound
 
     lap = 1
     lap_counted = False
@@ -956,6 +957,9 @@ def update_game_settings():
 
     smoke = Smoke()
     angle = 0
+
+    race_started = False
+    count_down_sound = 0
 
 
 def read_saved_tracks():
@@ -1018,11 +1022,8 @@ font_saved_track = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'),
 buttons_fade_in_value = 4
 
 def main():
-    global timer
-    global run
-    global button_clicked
+    global timer, run, button_clicked, mouse_on_button, sound_played
 
-    pygame.init()
     clock = pygame.time.Clock()
 
     read_saved_tracks()
@@ -1054,6 +1055,13 @@ def main():
 
         # print(f"\rIndex: {saved_track_index}", end=' ')
         # print(f"\rButton pressed: {button_clicked}", end=' ')
+        # print(f"\rButton pressed: {mouse_on_button}", end=' ')
+        print(f"\rRace started: {race_started}", end=' ')
+
+        if not mouse_on_button:
+            sound_played = False
+
+        mouse_on_button = False
 
         if pygame.mouse.get_pressed()[0] == 0:
             button_clicked = False
