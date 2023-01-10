@@ -394,16 +394,16 @@ def draw_segment(index, x1, y1, w1, x2, y2, w2, color):
     draw_polygon(x1 - w1 - r1, y1, x1 - w1, y1, x2 - w2, y2, x2 - w2 - r2, y2, color['rumble'])
     draw_polygon(x1 + w1 + r1, y1, x1 + w1, y1, x2 + w2, y2, x2 + w2 + r2, y2, color['rumble'])
 
-    lanew1 = w1 * 2 / LANES
-    lanew2 = w2 * 2 / LANES
-    lanex1 = x1 - w1 + lanew1
-    lanex2 = x2 - w2 + lanew2
+    lane_w1 = w1 * 2 / LANES
+    lane_w2 = w2 * 2 / LANES
+    lane_x1 = x1 - w1 + lane_w1
+    lane_x2 = x2 - w2 + lane_w2
     for lane in range(LANES - 1):
         if index != 3 and index != 2:
-            draw_polygon(lanex1 - l1 / 2, y1, lanex1 + l1 / 2, y1, lanex2 + l2 / 2, y2, lanex2 - l2 / 2, y2,
+            draw_polygon(lane_x1 - l1 / 2, y1, lane_x1 + l1 / 2, y1, lane_x2 + l2 / 2, y2, lane_x2 - l2 / 2, y2,
                          color['lane'])
-            lanex1 += lanew1
-            lanex2 += lanew2
+            lane_x1 += lane_w1
+            lane_x2 += lane_w2
 
 
 ''' Setting player's position (z value) on the track '''
@@ -445,7 +445,7 @@ def percentRemaining(j, total):
 def render_track():
     global current_curve
     base_segment = find_segment_by_z_value(position)
-    maxy = HEIGHT
+    max_y = HEIGHT
     curve = 0
     position_on_segment = percentRemaining(position, SEGMENT_LENGTH)
     curve_value = 0
@@ -466,7 +466,7 @@ def render_track():
         calculate_3D_view(segment['p2'], (position_x + curve_value - (curve * position_on_segment)), camera_y,
                           position - (track_length if is_road_looping else 0), distance_to_plane)
 
-        if (segment['p1']['camera']['z'] <= distance_to_plane) or (segment['p2']['screen']['y'] >= maxy):
+        if (segment['p1']['camera']['z'] <= distance_to_plane) or (segment['p2']['screen']['y'] >= max_y):
             continue
 
         draw_segment(segment['index'],
@@ -478,7 +478,7 @@ def render_track():
                      segment['p2']['screen']['w'],
                      segment['color'])
 
-        maxy = segment['p2']['screen']['y']
+        max_y = segment['p2']['screen']['y']
 
 
 ''' Controlling player's speed, current z and x position and car animations '''
@@ -531,6 +531,7 @@ def car_steering():
         if current_speed < MAX_SPEED:
             current_speed += ACCELERATION * dt
     elif keys[pygame.K_DOWN]:
+        car_sound_channel.fadeout(500)
         current_speed += BREAKING * dt
         if 0 < current_speed < 1000:
             smoke.add_particles()
@@ -539,7 +540,7 @@ def car_steering():
         if current_speed < 0:
             current_speed = 0
     else:
-        car_sound_channel.fadeout(200)
+        car_sound_channel.fadeout(500)
         current_speed += DECELERATION * dt
         if current_speed < 0:
             current_speed = 0
