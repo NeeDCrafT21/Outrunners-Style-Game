@@ -1,8 +1,21 @@
 # Outrunners-Style-Game
-Time trial racing game created using Python programing language. 
-Project made as a part of Functional Programing course at Military University of Technology
+Time trial racing game created using Python programing language and Pygame module. 
+Project made as a part of Functional Programing course at Military University of Technology.
 
-Game Screenshots:
-![image](https://user-images.githubusercontent.com/73967066/210265028-9a01c267-6978-449e-8d55-2a0032063779.png)
-![image](https://user-images.githubusercontent.com/73967066/210265126-6e8494f2-8cee-4e0f-91b4-75fe00c2dffb.png)
-![image](https://user-images.githubusercontent.com/73967066/210265152-f6f3dc0b-d39b-4111-bf11-e9c8b6662bbb.png)
+## PJF: Project Jagged Ferrari
+Game allows you to randomly generate racing circuits in pseudo 3D environment and try your best beating lap times you or your friends have set.
+
+## Features
+- Pseudo 3D track generation
+- Detailed menu screens
+- Animated player car sprite
+- Full sound design of game elements
+- Ability to save levels
+- Game proggress saving
+
+## Game Screenshots
+![image](https://user-images.githubusercontent.com/73967066/211585331-97277235-cd22-47bd-8be3-fd06a8f1f988.png)
+![image](https://user-images.githubusercontent.com/73967066/211585451-7b2f3675-1eac-4a6d-9a45-149d371c19cc.png)
+![image](https://user-images.githubusercontent.com/73967066/211585536-6de7dfa8-2335-4e36-ae05-10cd6b1ff012.png)
+![image](https://user-images.githubusercontent.com/73967066/211585681-6fe0a397-859f-46b0-a156-9d86cf8bc8fa.png)
+![image](https://user-images.githubusercontent.com/73967066/211585972-eb94c1ce-a4de-44d3-9f38-ab886fa1e6bb.png)
