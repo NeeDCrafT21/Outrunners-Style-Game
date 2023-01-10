@@ -138,6 +138,7 @@ VERY_LIGHT_TURN = 20100
 TURNS = [VERY_LIGHT_TURN, LIGHT_TURN, MEDIUM_TURN, HARD_TURN, VERY_HARD_TURN]
 
 ''' Camera settings '''
+camera_x = 0
 camera_y = 1000
 distance_to_player = 700
 distance_to_plane = 1 / (camera_y / distance_to_player)
@@ -259,6 +260,7 @@ class Smoke:
             self.all_particles = self.left_particles + self.right_particles
             if self.is_dirt:
                 sound_channel.queue(SOUND_DIRT)
+                # pygame.mixer.Sound.play(SOUND_DIRT)
             else:
                 pygame.mixer.Sound.play(SOUND_TIRE_SQUEAL)
 
@@ -424,6 +426,7 @@ def increase_z_position(player_current_position, player_traveled_distance, lengt
 
 
 def calculate_curve_x_value(segment_length, radius):
+    # print(f"\rY position: {y}", end=' ')
     if radius == 0:
         return 0
     x_value = round(math.fabs(radius) - sqrt(math.fabs(radius) ** 2 - segment_length ** 2))
@@ -565,6 +568,8 @@ def check_best_time():
 def check_lap_number():
     global lap, lap_counted
 
+    # print(f"\rPosition: {round(position)} / {round(last_position)}, {lap_counted}", end=' ')
+
     if position < last_position and not lap_counted:
         lap += 1
         lap_counted = True
@@ -676,7 +681,7 @@ def render_background():
     background = pygame.transform.scale(BACKGROUND_IMAGE, (BACKGROUND_IMAGE_WIDTH, BACKGROUND_IMAGE_HEIGHT))
     if not game_paused:
         background_x_start_position += current_curve * (current_speed / MAX_SPEED)
-
+    # print(f"\rX Value: {round(background_x_start_position)}", end=' ')
     WIN.blit(background, (background_x_start_position, 0))
     WIN.blit(background, (background_x_start_position - BACKGROUND_IMAGE_WIDTH, 0))
     WIN.blit(background, (background_x_start_position + BACKGROUND_IMAGE_WIDTH, 0))
@@ -808,7 +813,7 @@ def screen_fade_in():
     fade_in.set_alpha(fade_alpha)
     pygame.draw.rect(fade_in, (1, 1, 1), (0, 0, WIDTH, HEIGHT))
     WIN.blit(fade_in, (0, 0))
-
+    # print(f"\rAlpha value: {alpha}", end=' ')
     pygame.display.update()
     fade_alpha += fade_in_step
 
@@ -962,7 +967,7 @@ def render_start_screen():
     WIN.blit(mf_logo, mf_logo.get_rect(center=(WIDTH / 2, HEIGHT / 2)))
     WIN.blit(fade_out, (0, 0))
     pygame.display.update()
-
+    # print(f"\rAlpha value: {fade_alpha}", end=' ')
     fade_alpha -= 1
 
     if fade_alpha < 0:
@@ -1101,6 +1106,11 @@ def main():
 
         if current_music is None:
             pygame.mixer.music.fadeout(500)
+
+        # print(f"\rIndex: {saved_track_index}", end=' ')
+        # print(f"\rButton pressed: {button_clicked}", end=' ')
+        # print(f"\rButton pressed: {mouse_on_button}", end=' ')
+        # print(f"\rRace started: {race_started}", end=' ')
 
         if not mouse_on_button:
             sound_played = False
