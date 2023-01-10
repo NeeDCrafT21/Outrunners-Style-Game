@@ -62,6 +62,9 @@ BUTTON_BACK_PRESSED_IMAGE = pygame.image.load(os.path.join('Assets', 'button_bac
 BACK_BUTTON = [BUTTON_BACK_UNPRESSED_IMAGE, BUTTON_BACK_PRESSED_IMAGE]
 
 ''' Sounds '''
+sound_channel = pygame.mixer.Channel(1)
+car_sound_channel = pygame.mixer.Channel(2)
+
 SOUND_BUTTON_NEXT = pygame.mixer.Sound(os.path.join('Sounds', 'button_next.wav'))
 SOUND_BUTTON_NEXT.set_volume(0.2)
 SOUND_BUTTON_BACK = pygame.mixer.Sound(os.path.join('Sounds', 'button_back.wav'))
@@ -81,6 +84,23 @@ SOUND_COUNT_DOWN.set_volume(0.2)
 SOUND_GO = pygame.mixer.Sound(os.path.join('Sounds', 'go.wav'))
 SOUND_GO.set_volume(0.2)
 COUNT_DOWN_SOUNDS = [SOUND_COUNT_DOWN, SOUND_COUNT_DOWN, SOUND_COUNT_DOWN, SOUND_GO]
+
+SOUND_TIRE_SQUEAL = pygame.mixer.Sound(os.path.join('Sounds', 'squeal.wav'))
+SOUND_TIRE_SQUEAL.set_volume(0.08)
+SOUND_DIRT = pygame.mixer.Sound(os.path.join('Sounds', 'dirt.wav'))
+SOUND_DIRT.set_volume(0.1)
+
+SOUND_NEW_BEST_TIME = pygame.mixer.Sound(os.path.join('Sounds', 'new_best_time.wav'))
+SOUND_NEW_BEST_TIME.set_volume(0.2)
+SOUND_NEW_LAP = pygame.mixer.Sound(os.path.join('Sounds', 'new_lap.wav'))
+SOUND_NEW_LAP.set_volume(0.2)
+
+SOUND_CAR_ENGINE = pygame.mixer.Sound(os.path.join('Sounds', 'car_engine.ogg'))
+SOUND_CAR_ENGINE.set_volume(0.05)
+
+''' Music '''
+MENU_MUSIC = os.path.join('Sounds', 'menu_music.mp3')
+GAME_MUSIC = os.path.join('Sounds', 'game_music.mp3')
 
 ''' Player car image '''
 PLAYER_CAR_STRAIGHT_IMAGE = pygame.image.load(os.path.join('Assets', 'player_car.png'))
@@ -231,12 +251,18 @@ class Smoke:
         self.is_dirt = False
 
     def add_particles(self):
+        global sound_channel
         if self.frames % 5 == 0:
             self.frames = 0
             self.left_particles.append(SmokeParticle(self.x, self.y, self.is_dirt))
             self.right_particles.append(
                 SmokeParticle(self.x + PLAYER_CAR_IMAGE_WIDTH * CAR_SCALE - 40, self.y, self.is_dirt))
             self.all_particles = self.left_particles + self.right_particles
+            if self.is_dirt:
+                sound_channel.queue(SOUND_DIRT)
+                # pygame.mixer.Sound.play(SOUND_DIRT)
+            else:
+                pygame.mixer.Sound.play(SOUND_TIRE_SQUEAL)
 
     def update(self):
         self.all_particles = [i for i in self.all_particles if i.alive]
@@ -497,6 +523,7 @@ def car_steering():
                 current_car_orientation = PLAYER_CAR_DRIFT_RIGHT_IMAGE
 
     if keys[pygame.K_UP]:
+        car_sound_channel.queue(SOUND_CAR_ENGINE)
         if 0 < current_speed < 500:
             smoke.add_particles()
             smoke.update()
@@ -512,6 +539,7 @@ def car_steering():
         if current_speed < 0:
             current_speed = 0
     else:
+        car_sound_channel.fadeout(200)
         current_speed += DECELERATION * dt
         if current_speed < 0:
             current_speed = 0
@@ -527,8 +555,11 @@ def check_best_time():
     last_time = new_time
     if new_time < best_time or best_time == [0, 0, 0]:
         best_time = new_time
+        pygame.mixer.find_channel().play(SOUND_NEW_BEST_TIME)
         if saved_track_index is not None:
             saved_tracks[saved_track_index]['best time'] = best_time
+    else:
+        pygame.mixer.find_channel().play(SOUND_NEW_LAP)
 
     timer = [0, 0, 0]
 
@@ -667,15 +698,20 @@ race_started = False
 
 
 def race_count_down():
-    global count_down_frame, count_down_sound, race_started
+    global count_down_frame, count_down_sound, race_started, current_music
     count_down_frame += 1
-    if count_down_frame % 80 == 0:
+    if count_down_frame % 70 == 0:
         count_down_frame = 0
         pygame.mixer.Sound.play(COUNT_DOWN_SOUNDS[count_down_sound])
         count_down_sound += 1
     if count_down_sound == (len(COUNT_DOWN_SOUNDS)):
         count_down_sound = 0
         race_started = True
+
+        pygame.mixer.music.unload()
+        pygame.mixer.music.load(GAME_MUSIC)
+        pygame.mixer.music.play(-1)
+        current_music = 'game music'
 
 
 esc_pressed = False
@@ -686,6 +722,8 @@ def draw_game_window():
 
     keys = pygame.key.get_pressed()
     if keys[pygame.K_ESCAPE] and not game_paused and not esc_pressed:
+        sound_channel.pause()
+        car_sound_channel.pause()
         esc_pressed = True
         game_paused = True
 
@@ -693,6 +731,7 @@ def draw_game_window():
         esc_pressed = False
 
     if keys[pygame.K_ESCAPE] and game_paused and not esc_pressed:
+        pygame.mixer.unpause()
         esc_pressed = True
         game_paused = False
 
@@ -721,7 +760,7 @@ def draw_game_window():
 
 
 def esc_pause_menu():
-    global window_mode, game_paused, start_timer, saved_tracks, saved_track_index
+    global window_mode, game_paused, start_timer, saved_tracks, saved_track_index, current_music
 
     save_button = Button(WIDTH / 2, 320, SAVE_BUTTON, 4.5, 'save')
     quit_button = Button(WIDTH / 2, 420, QUIT_BUTTON, 4.5, 'back')
@@ -734,6 +773,7 @@ def esc_pause_menu():
         update_game_settings()
         game_paused = False
         start_timer = False
+        current_music = None
         set_screen_fade_in(2, 'menu')
 
     if saved_track_index is not None or len(saved_tracks) == 5:
@@ -799,7 +839,7 @@ def menu_car_spinning():
 
 
 def draw_menu_window():
-    global window_mode, run, saved_track_index
+    global window_mode, run, saved_track_index, current_music
 
     play_button = Button(WIDTH / 2, 370, PLAY_BUTTON, 4.5, 'start')
     quit_button = Button(WIDTH / 2, 470, QUIT_BUTTON, 4.5, None)
@@ -815,6 +855,7 @@ def draw_menu_window():
         if len(saved_tracks) != 0:
             set_screen_fade_in(buttons_fade_in_value, 'tracks')
         else:
+            current_music = None
             set_screen_fade_in(buttons_fade_in_value, 'game')
             saved_track_index = None
     if quit_button.draw(WIN):
@@ -835,7 +876,7 @@ def load_saved_track(index):
 
 
 def show_saved_tracks():
-    global window_mode
+    global window_mode, current_music
 
     for i in range(len(saved_tracks)):
         track_play_button = Button(WIDTH / 2 + 90, 200 + (i * 65), PLAY_BUTTON, 3, 'start')
@@ -854,6 +895,7 @@ def show_saved_tracks():
         WIN.blit(text_saved_best_time, rect_saved_best_time)
 
         if track_play_button.draw(WIN):
+            current_music = None
             set_screen_fade_in(buttons_fade_in_value, 'game')
             load_saved_track(i)
         if track_delete_button.draw(WIN):
@@ -862,7 +904,7 @@ def show_saved_tracks():
 
 
 def draw_tracks_menu_window():
-    global window_mode, saved_track_index
+    global window_mode, saved_track_index, current_music
 
     play_button = Button(WIDTH / 2, 650, PLAY_BUTTON, 4.5, 'start')
     back_button = Button(100, 650, BACK_BUTTON, 4.5, 'back')
@@ -880,6 +922,7 @@ def draw_tracks_menu_window():
 
     if play_button.draw(WIN):
         set_screen_fade_in(buttons_fade_in_value, 'game')
+        current_music = None
         saved_track_index = None
     if back_button.draw(WIN):
         set_screen_fade_in(buttons_fade_in_value, 'menu')
@@ -1021,8 +1064,11 @@ font_saved_track = pygame.font.Font(os.path.join('Assets', 'Grand9K Pixel.ttf'),
 
 buttons_fade_in_value = 4
 
+current_music = None
+pygame.mixer.music.set_volume(0.1)
+
 def main():
-    global timer, run, button_clicked, mouse_on_button, sound_played
+    global timer, run, button_clicked, mouse_on_button, sound_played, current_music
 
     clock = pygame.time.Clock()
 
@@ -1047,16 +1093,23 @@ def main():
         elif window_mode == 'start':
             render_start_screen()
         elif window_mode == 'menu':
+            if current_music is None:
+                pygame.mixer.music.load(MENU_MUSIC)
+                pygame.mixer.music.play(-1, 2)
+                current_music = 'menu music'
             draw_menu_window()
         elif window_mode == 'tracks':
             draw_tracks_menu_window()
         elif window_mode == 'game':
             draw_game_window()
 
+        if current_music is None:
+            pygame.mixer.music.fadeout(500)
+
         # print(f"\rIndex: {saved_track_index}", end=' ')
         # print(f"\rButton pressed: {button_clicked}", end=' ')
         # print(f"\rButton pressed: {mouse_on_button}", end=' ')
-        print(f"\rRace started: {race_started}", end=' ')
+        # print(f"\rRace started: {race_started}", end=' ')
 
         if not mouse_on_button:
             sound_played = False
@@ -1066,7 +1119,8 @@ def main():
         if pygame.mouse.get_pressed()[0] == 0:
             button_clicked = False
 
-    save_saved_tracks()
+    if not window_mode == 'start':
+        save_saved_tracks()
     pygame.quit()
 
 
