@@ -13,7 +13,7 @@ Game allows you to randomly generate racing circuits in pseudo 3D environment an
 - Ability to save levels
 - Game proggress saving
 
-## Game Screenshots:
+## Game Screenshots
 ![image](https://user-images.githubusercontent.com/73967066/211585331-97277235-cd22-47bd-8be3-fd06a8f1f988.png)
 ![image](https://user-images.githubusercontent.com/73967066/211585451-7b2f3675-1eac-4a6d-9a45-149d371c19cc.png)
 ![image](https://user-images.githubusercontent.com/73967066/211585536-6de7dfa8-2335-4e36-ae05-10cd6b1ff012.png)
