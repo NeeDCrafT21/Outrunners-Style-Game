@@ -1,4 +1,4 @@
-# Outrunners-Style-Game
+# OutRun-Style-Game
 Time trial racing game created using Python programing language and Pygame module. 
 Project made as a part of Functional Programing course at Military University of Technology.
 
