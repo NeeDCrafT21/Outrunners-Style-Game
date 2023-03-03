@@ -3,7 +3,7 @@ Time trial racing game created using Python programing language and Pygame modul
 Project made as a part of Functional Programing course at Military University of Technology.
 
 ## PJF: Project Jagged Ferrari
-Game allows you to randomly generate racing circuits in pseudo 3D environment and try your best beating lap times you or your friends have set.
+Game allows you to randomly generate racing circuits in pseudo 3D environment and race on them trying to beat your best lap times.
 
 ## Features
 - Pseudo 3D track generation
