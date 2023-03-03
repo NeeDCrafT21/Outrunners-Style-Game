@@ -596,8 +596,9 @@ def draw_gauge(rot_x, rot_y):
     pygame.draw.circle(gauge, (1, 1, 1), (gauge_radius, gauge_radius), gauge_radius - 3)
     pygame.draw.circle(gauge, (20, 20, 20), (gauge_radius, gauge_radius), gauge_radius - 15)
 
-    gb_logo = pygame.transform.scale(GB_LOGO, (GB_LOGO.get_width() * 0.6, GB_LOGO.get_height() * 0.6))
-    gauge.blit(gb_logo, gb_logo.get_rect(center=(gauge_radius, gauge_radius - 30)))
+    ''' draw Grupa Badawcza logo on speedometer '''
+    # gb_logo = pygame.transform.scale(GB_LOGO, (GB_LOGO.get_width() * 0.6, GB_LOGO.get_height() * 0.6))
+    # gauge.blit(gb_logo, gb_logo.get_rect(center=(gauge_radius, gauge_radius - 30)))
 
     digital_speedo = pygame.Rect(gauge_radius / 2, gauge_radius + 35, 80, 30)
     pygame.draw.rect(gauge, (120, 120, 120), digital_speedo)
